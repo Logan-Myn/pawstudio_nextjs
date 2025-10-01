@@ -7,7 +7,6 @@ import { Plus, RefreshCw, AlertTriangle } from 'lucide-react'
 import { SceneList } from '@/components/admin/scene-list'
 import { SceneForm } from '@/components/admin/scene-form'
 import { useAuthStore } from '@/lib/store/auth'
-import { supabase } from '@/lib/supabase'
 
 interface Scene {
   id: string
@@ -34,10 +33,8 @@ export default function ScenesPage() {
     fetchScenes()
   }, [])
 
-  const getAuthHeaders = async () => {
-    const { data: { session } } = await supabase.auth.getSession()
+  const getAuthHeaders = () => {
     return {
-      'Authorization': `Bearer ${session?.access_token}`,
       'Content-Type': 'application/json'
     }
   }
@@ -47,7 +44,7 @@ export default function ScenesPage() {
       setLoading(true)
       setError(null)
 
-      const headers = await getAuthHeaders()
+      const headers = getAuthHeaders()
       const response = await fetch('/api/admin/scenes', { headers })
 
       if (!response.ok) {
