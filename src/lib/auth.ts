@@ -17,6 +17,7 @@ export const auth = betterAuth({
     google: {
       clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+      redirectURI: `${process.env.BETTER_AUTH_URL || 'http://localhost:3000'}/api/auth/callback/google`,
       enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
     },
   },
@@ -75,6 +76,8 @@ export const auth = betterAuth({
   verification: {
     modelName: "verification_tokens",
     fields: {
+      identifier: "identifier",
+      value: "value",
       expiresAt: "expires_at",
       createdAt: "created_at",
       updatedAt: "updated_at",
