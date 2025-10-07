@@ -1354,30 +1354,6 @@ src/
 mv /Users/loganmoyon/Documents/Dev/pawstudio /Users/loganmoyon/Documents/Dev/pawstudio_backup
 ```
 
-### User Communication
-
-**Important:** Users will need to:
-1. **Reset their passwords** (Better-Auth uses different hashing)
-2. **Re-link payment methods** (test Stripe integration)
-
-**Send migration email:**
-```
-Subject: PawStudio Platform Upgrade
-
-We've upgraded PawStudio to a faster, more reliable platform!
-
-What's New:
-- Faster photo processing
-- Better mobile experience
-- Enhanced admin tools
-
-Action Required:
-- Please reset your password: [link]
-- Your credits and photos have been migrated
-
-Questions? Contact support@pawstudio.com
-```
-
 ---
 
 ## Rollback Plan
@@ -1449,7 +1425,6 @@ If migration fails, you can rollback:
 
 - **Database:** Keep old Neon database as backup for 30 days
 - **Photos:** Already in Backblaze, just update references
-- **Users:** Will need password reset (Better-Auth incompatible with Devise)
 - **Stripe:** Customers preserved, test webhooks thoroughly
 - **Mobile:** React Native app can use same Next.js API
 

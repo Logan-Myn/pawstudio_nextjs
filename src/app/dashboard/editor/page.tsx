@@ -1,24 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { useAuthStore } from '@/lib/store/auth'
 import { useEditorStore } from '@/lib/store/editor'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { ImageUpload } from '@/components/editor/image-upload'
 import { FilterSelection } from '@/components/editor/filter-selection'
 import { ProcessingStatus } from '@/components/editor/processing-status'
 import { imageAPI } from '@/lib/api'
 import { FILTER_TYPES, ProcessedImage } from '@/types'
-import { Camera, Sparkles, AlertCircle, Upload, Palette, Wand2, Download } from 'lucide-react'
+import { Camera, Sparkles, AlertCircle, Upload, Palette, Wand2, Download, ImageIcon, Loader2 } from 'lucide-react'
 
 type EditorStep = 'upload' | 'filter' | 'processing' | 'result'
+
+interface LibraryPhoto {
+  id: number
+  userId: string
+  originalFilename: string
+  fileUrl: string
+  fileSize: number
+  uploadedAt: string
+}
 
 export default function EditorPage() {
   const { user, credits: userCredits, setUser } = useAuthStore()
   const { isProcessing, setProcessing, addProcessedImage } = useEditorStore()
-  
+
   const [currentStep, setCurrentStep] = useState<EditorStep>('upload')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [selectedImagePreview, setSelectedImagePreview] = useState<string | null>(null)
@@ -26,6 +36,44 @@ export default function EditorPage() {
   const [processedResult, setProcessedResult] = useState<ProcessedImage | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isDownloading, setIsDownloading] = useState(false)
+
+  // Library state
+  const [libraryPhotos, setLibraryPhotos] = useState<LibraryPhoto[]>([])
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+  const [uploadTab, setUploadTab] = useState<'upload' | 'library'>('upload')
+
+  // Fetch library photos when library tab is opened
+  useEffect(() => {
+    if (uploadTab === 'library' && libraryPhotos.length === 0) {
+      fetchLibraryPhotos()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uploadTab])
+
+  const fetchLibraryPhotos = async () => {
+    try {
+      setIsLoadingLibrary(true)
+      console.log('Fetching library photos...')
+      const response = await fetch('/api/photos/library')
+      const data = await response.json()
+      console.log('Library response:', data)
+
+      if (data.success) {
+        console.log('Setting library photos:', data.photos)
+        setLibraryPhotos(data.photos)
+      }
+    } catch (error) {
+      console.error('Error fetching library:', error)
+    } finally {
+      setIsLoadingLibrary(false)
+    }
+  }
+
+  const handleLibraryPhotoSelect = (photo: LibraryPhoto) => {
+    setSelectedImagePreview(photo.fileUrl)
+    setCurrentStep('filter')
+    setError(null)
+  }
 
   const handleImageSelect = (file: File, preview: string) => {
     setSelectedFile(file)
@@ -48,7 +96,7 @@ export default function EditorPage() {
   }
 
   const handleProcess = async () => {
-    if (!selectedFile || !selectedFilter || !user) return
+    if (!selectedImagePreview || !selectedFilter || !user) return
 
     const selectedFilterType = FILTER_TYPES.find(f => f.id === selectedFilter)
     if (!selectedFilterType) return
@@ -64,14 +112,18 @@ export default function EditorPage() {
     setError(null)
 
     try {
-      // First upload the image
-      const formData = new FormData()
-      formData.append('image', selectedFile)
-      
-      const uploadResponse = await imageAPI.upload(formData)
-      const imageUrl = uploadResponse.data.url
+      let imageUrl = selectedImagePreview
 
-      // Then process with AI
+      // Only upload if we have a new file (not from library)
+      if (selectedFile) {
+        const formData = new FormData()
+        formData.append('image', selectedFile)
+
+        const uploadResponse = await imageAPI.upload(formData)
+        imageUrl = uploadResponse.data.url
+      }
+
+      // Process with AI
       const processResponse = await imageAPI.process({
         imageUrl,
         filterId: selectedFilter
@@ -270,22 +322,73 @@ export default function EditorPage() {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {!selectedImagePreview ? (
-          /* Upload State - Full Width Upload Area */
-          <div className="max-w-2xl mx-auto">
+          /* Upload State - Full Width Upload Area with Tabs */
+          <div className="max-w-4xl mx-auto">
             <Card className="bg-white shadow-sm border border-gray-200">
               <CardContent className="p-8">
                 <div className="flex items-center justify-center space-x-2 mb-6">
                   <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
                     <Upload className="w-5 h-5 text-blue-600" />
                   </div>
-                  <h2 className="text-xl font-semibold text-gray-900">Upload Your Pet Photo</h2>
+                  <h2 className="text-xl font-semibold text-gray-900">Choose Your Pet Photo</h2>
                 </div>
-                
-                <ImageUpload
-                  onImageSelect={handleImageSelect}
-                  selectedImage={selectedImagePreview || undefined}
-                  onImageRemove={handleImageRemove}
-                />
+
+                <Tabs value={uploadTab} onValueChange={(val) => setUploadTab(val as 'upload' | 'library')}>
+                  <TabsList className="grid w-full grid-cols-2 mb-6">
+                    <TabsTrigger value="upload">📤 Upload New</TabsTrigger>
+                    <TabsTrigger value="library">📸 From Library</TabsTrigger>
+                  </TabsList>
+
+                  <TabsContent value="upload">
+                    <ImageUpload
+                      onImageSelect={handleImageSelect}
+                      selectedImage={selectedImagePreview || undefined}
+                      onImageRemove={handleImageRemove}
+                    />
+                  </TabsContent>
+
+                  <TabsContent value="library">
+                    {isLoadingLibrary ? (
+                      <div className="flex items-center justify-center py-12">
+                        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                      </div>
+                    ) : libraryPhotos.length === 0 ? (
+                      <div className="text-center py-12">
+                        <ImageIcon className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">No photos in library</h3>
+                        <p className="text-gray-600 mb-6">
+                          Upload your first photo to build your library
+                        </p>
+                        <Button onClick={() => setUploadTab('upload')} variant="outline">
+                          <Upload className="mr-2 h-4 w-4" />
+                          Upload a Photo
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        {libraryPhotos.map((photo) => (
+                          <div
+                            key={photo.id}
+                            onClick={() => handleLibraryPhotoSelect(photo)}
+                            className="cursor-pointer group relative aspect-square rounded-xl overflow-hidden bg-gray-100 hover:ring-2 hover:ring-blue-500 transition-all"
+                          >
+                            <Image
+                              src={photo.fileUrl}
+                              alt={photo.originalFilename}
+                              fill
+                              className="object-cover group-hover:scale-105 transition-transform duration-200"
+                            />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                              <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                                Select
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </TabsContent>
+                </Tabs>
               </CardContent>
             </Card>
           </div>

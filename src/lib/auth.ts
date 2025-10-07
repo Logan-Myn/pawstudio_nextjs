@@ -1,4 +1,5 @@
 import { betterAuth } from "better-auth";
+import { expo } from "@better-auth/expo";
 import { Pool } from "pg";
 
 // Create a PostgreSQL connection pool for Better-Auth
@@ -9,6 +10,12 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  plugins: [
+    expo({
+      // Add mobile app scheme for trusted origins
+      trustedOrigins: ["pawstudio://"],
+    }),
+  ],
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,

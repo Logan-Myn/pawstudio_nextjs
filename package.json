@@ -13,6 +13,7 @@
     "vercel:preview": "vercel"
   },
   "dependencies": {
+    "@better-auth/expo": "^1.3.24",
     "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.2.1",
     "@neondatabase/serverless": "^1.0.2",

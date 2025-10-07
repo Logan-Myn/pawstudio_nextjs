@@ -23,6 +23,15 @@ const CATEGORIES = [
 
 type Phase = 'selection' | 'loading' | 'result' | 'error'
 
+interface LibraryPhoto {
+  id: number
+  userId: string
+  originalFilename: string
+  fileUrl: string
+  fileSize: number
+  uploadedAt: string
+}
+
 export default function DashboardPage() {
   const { user, credits, setCredits } = useAuthStore()
   const [uploadedImage, setUploadedImage] = useState<string | null>(null)
@@ -37,6 +46,10 @@ export default function DashboardPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Library state
+  const [libraryPhotos, setLibraryPhotos] = useState<LibraryPhoto[]>([])
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
+
   // Extract first name from email
   const firstName = user?.name || user?.email?.split('@')[0]?.split('.')[0] || 'there'
   const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1)
@@ -45,6 +58,35 @@ export default function DashboardPage() {
   const filteredFilters = selectedCategory === 'all'
     ? FILTERS
     : FILTERS.filter(f => f.category === selectedCategory)
+
+  // Fetch library photos when tab is opened
+  useEffect(() => {
+    if (activeTab === 'library' && libraryPhotos.length === 0) {
+      fetchLibraryPhotos()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab])
+
+  const fetchLibraryPhotos = async () => {
+    try {
+      setIsLoadingLibrary(true)
+      const response = await fetch('/api/photos/library')
+      const data = await response.json()
+
+      if (data.success) {
+        setLibraryPhotos(data.photos)
+      }
+    } catch (error) {
+      console.error('Error fetching library:', error)
+    } finally {
+      setIsLoadingLibrary(false)
+    }
+  }
+
+  const handleLibraryPhotoSelect = (photo: LibraryPhoto) => {
+    setUploadedImage(photo.fileUrl)
+    setUploadedFile(null) // Clear file since we're using a URL
+  }
 
   useEffect(() => {
     if (phase === 'loading') {
@@ -96,27 +138,32 @@ export default function DashboardPage() {
   }
 
   const handleGenerate = async () => {
-    if (!uploadedFile || !selectedFilter) return
+    if (!uploadedImage || !selectedFilter) return
 
     setPhase('loading')
     setError(null)
 
     try {
-      // Upload image
-      const formData = new FormData()
-      formData.append('image', uploadedFile)
+      let imageUrl = uploadedImage
 
-      const uploadRes = await fetch('/api/images/upload', {
-        method: 'POST',
-        body: formData,
-        credentials: 'include',
-      })
+      // Only upload if we have a new file (not from library)
+      if (uploadedFile) {
+        const formData = new FormData()
+        formData.append('image', uploadedFile)
 
-      if (!uploadRes.ok) {
-        throw new Error('Failed to upload image')
+        const uploadRes = await fetch('/api/images/upload', {
+          method: 'POST',
+          body: formData,
+          credentials: 'include',
+        })
+
+        if (!uploadRes.ok) {
+          throw new Error('Failed to upload image')
+        }
+
+        const uploadData = await uploadRes.json()
+        imageUrl = uploadData.url
       }
-
-      const uploadData = await uploadRes.json()
 
       // Process image
       const processRes = await fetch('/api/images/process', {
@@ -124,7 +171,7 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
-          imageUrl: uploadData.url,
+          imageUrl,
           filterId: selectedFilter,
         }),
       })
@@ -272,11 +319,49 @@ export default function DashboardPage() {
               {/* Library Tab Content */}
               {activeTab === 'library' && (
                 <div className="h-80 overflow-y-auto bg-gray-50 rounded-2xl p-4">
-                  <div className="text-center py-12">
-                    <div className="text-gray-400 text-4xl mb-4">📸</div>
-                    <p className="text-gray-500 mb-4">No photos uploaded yet</p>
-                    <p className="text-sm text-gray-400">Upload a photo using the "Upload New" tab</p>
-                  </div>
+                  {isLoadingLibrary ? (
+                    <div className="flex items-center justify-center py-12">
+                      <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+                    </div>
+                  ) : libraryPhotos.length === 0 ? (
+                    <div className="text-center py-12">
+                      <div className="text-gray-400 text-4xl mb-4">📸</div>
+                      <p className="text-gray-500 mb-4">No photos uploaded yet</p>
+                      <p className="text-sm text-gray-400">Upload a photo using the "Upload New" tab</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      {libraryPhotos.map((photo) => (
+                        <div
+                          key={photo.id}
+                          onClick={() => handleLibraryPhotoSelect(photo)}
+                          className={`cursor-pointer group relative aspect-square rounded-xl overflow-hidden transition-all ${
+                            uploadedImage === photo.fileUrl
+                              ? 'ring-2 ring-orange-500'
+                              : 'hover:ring-2 hover:ring-orange-300'
+                          }`}
+                        >
+                          <Image
+                            src={photo.fileUrl}
+                            alt={photo.originalFilename}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-200"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-all flex items-center justify-center">
+                            <span className="text-white font-medium opacity-0 group-hover:opacity-100 transition-opacity text-sm">
+                              {uploadedImage === photo.fileUrl ? '✓ Selected' : 'Select'}
+                            </span>
+                          </div>
+                          {/* Selected indicator */}
+                          {uploadedImage === photo.fileUrl && (
+                            <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white flex items-center justify-center text-xs font-bold shadow-lg">
+                              ✓
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

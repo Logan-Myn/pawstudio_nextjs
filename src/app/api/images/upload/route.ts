@@ -128,11 +128,25 @@ export async function POST(request: NextRequest) {
     // Construct the public URL
     const publicUrl = `${authData.downloadUrl}/file/${B2_BUCKET_NAME}/${fileName}`
 
-    // Save to database using Neon
+    // Save to photos table for library
+    const photoRecord = await db.createPhoto({
+      userId: user.id,
+      originalFilename: file.name,
+      fileUrl: publicUrl,
+      fileSize: file.size
+    })
+
+    if (!photoRecord) {
+      console.error('Failed to create photo record')
+      return NextResponse.json({ error: 'Failed to save photo record' }, { status: 500 })
+    }
+
+    // Save to images table for processing tracking
     const imageRecord = await db.createImage({
       userId: user.id,
       originalUrl: publicUrl,
-      filterType: 'none'
+      filterType: 'none',
+      photoId: photoRecord.id
     })
 
     if (!imageRecord) {
@@ -144,6 +158,7 @@ export async function POST(request: NextRequest) {
       success: true,
       url: publicUrl,
       imageId: imageRecord.id,
+      photoId: photoRecord.id,
       message: 'Image uploaded successfully'
     })
 

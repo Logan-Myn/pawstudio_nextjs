@@ -236,17 +236,36 @@ export async function POST(request: NextRequest) {
     // Construct the public URL for processed image
     const processedUrl = `${authData.downloadUrl}/file/${B2_BUCKET_NAME}/${processedFileName}`
 
-    // Update image record in database using Neon
-    const updateSuccess = await db.updateImageByOriginalUrl(user.id, imageUrl, {
+    // Try to update existing image record, or create a new one if it doesn't exist
+    let imageRecord = await db.updateImageByOriginalUrl(user.id, imageUrl, {
       processedUrl: processedUrl,
       filterType: filterId,
       processingStatus: 'completed',
       processedAt: new Date()
     })
 
-    if (!updateSuccess) {
-      console.error('Database update error')
-      return NextResponse.json({ error: 'Failed to update image record' }, { status: 500 })
+    // If no existing record was updated, create a new one
+    if (!imageRecord) {
+      console.log('No existing image record, creating new one...')
+      imageRecord = await db.createImage({
+        userId: user.id,
+        originalUrl: imageUrl,
+        filterType: filterId,
+      })
+
+      if (imageRecord) {
+        // Now update it with the processed data
+        imageRecord = await db.updateImage(imageRecord.id, {
+          processedUrl: processedUrl,
+          processingStatus: 'completed',
+          processedAt: new Date()
+        })
+      }
+    }
+
+    if (!imageRecord) {
+      console.error('Database update/create error')
+      return NextResponse.json({ error: 'Failed to save image record' }, { status: 500 })
     }
 
     // Deduct credits and record transaction
