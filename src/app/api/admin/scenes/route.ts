@@ -2,11 +2,10 @@ import { NextRequest } from 'next/server'
 import { verifyAdminAccess } from '@/lib/admin'
 import { db } from '@/lib/db'
 
-// GET /api/admin/scenes - List all scenes
+// GET /api/admin/scenes - List all scenes (public endpoint for users to see available scenes)
 export async function GET(request: NextRequest) {
   try {
-    await verifyAdminAccess(request)
-
+    // No auth required - users need to see available scenes for photo generation
     const scenes = await db.getAllScenes()
 
     if (!scenes) {
@@ -21,15 +20,18 @@ export async function GET(request: NextRequest) {
       id: scene.id,
       name: scene.name,
       description: scene.description,
-      creditCost: scene.credit_cost,
-      isActive: scene.is_active,
-      promptTemplate: scene.prompt_template,
-      imageReference: scene.image_reference || null,
-      createdAt: scene.created_at
+      prompt: scene.prompt_template,
+      category: scene.category || null,
+      preview_image: scene.image_reference || null,
+      active: scene.is_active,
+      display_order: scene.display_order || 0,
+      usage_count: scene.usage_count || 0,
+      created_at: scene.created_at,
+      updated_at: scene.updated_at || scene.created_at
     }))
 
     return new Response(
-      JSON.stringify({ success: true, scenes: formattedScenes }),
+      JSON.stringify(formattedScenes),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: any) {
