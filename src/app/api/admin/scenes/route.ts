@@ -2,10 +2,11 @@ import { NextRequest } from 'next/server'
 import { verifyAdminAccess } from '@/lib/admin'
 import { db } from '@/lib/db'
 
-// GET /api/admin/scenes - List all scenes (public endpoint for users to see available scenes)
+// GET /api/admin/scenes - List all scenes (admin only)
 export async function GET(request: NextRequest) {
   try {
-    // No auth required - users need to see available scenes for photo generation
+    await verifyAdminAccess(request)
+
     const scenes = await db.getAllScenes()
 
     if (!scenes) {
