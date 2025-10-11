@@ -11,7 +11,7 @@ import { ImageUpload } from '@/components/editor/image-upload'
 import { FilterSelection } from '@/components/editor/filter-selection'
 import { ProcessingStatus } from '@/components/editor/processing-status'
 import { imageAPI } from '@/lib/api'
-import { FILTER_TYPES, ProcessedImage } from '@/types'
+import { Scene, ProcessedImage } from '@/types'
 import { Camera, Sparkles, AlertCircle, Upload, Palette, Wand2, Download, ImageIcon, Loader2 } from 'lucide-react'
 
 type EditorStep = 'upload' | 'filter' | 'processing' | 'result'
@@ -42,6 +42,15 @@ export default function EditorPage() {
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
   const [uploadTab, setUploadTab] = useState<'upload' | 'library'>('upload')
 
+  // Scenes state
+  const [scenes, setScenes] = useState<Scene[]>([])
+  const [isLoadingScenes, setIsLoadingScenes] = useState(true)
+
+  // Fetch scenes on mount
+  useEffect(() => {
+    fetchScenes()
+  }, [])
+
   // Fetch library photos when library tab is opened
   useEffect(() => {
     if (uploadTab === 'library' && libraryPhotos.length === 0) {
@@ -49,6 +58,22 @@ export default function EditorPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploadTab])
+
+  const fetchScenes = async () => {
+    try {
+      setIsLoadingScenes(true)
+      const response = await fetch('/api/scenes')
+      const data = await response.json()
+
+      if (Array.isArray(data)) {
+        setScenes(data)
+      }
+    } catch (error) {
+      console.error('Error fetching scenes:', error)
+    } finally {
+      setIsLoadingScenes(false)
+    }
+  }
 
   const fetchLibraryPhotos = async () => {
     try {
@@ -98,12 +123,12 @@ export default function EditorPage() {
   const handleProcess = async () => {
     if (!selectedImagePreview || !selectedFilter || !user) return
 
-    const selectedFilterType = FILTER_TYPES.find(f => f.id === selectedFilter)
-    if (!selectedFilterType) return
+    const selectedScene = scenes.find(s => String(s.id) === selectedFilter)
+    if (!selectedScene) return
 
     // Check if user has enough credits
-    if ((userCredits || 0) < selectedFilterType.creditCost) {
-      setError(`You need ${selectedFilterType.creditCost} credit${selectedFilterType.creditCost !== 1 ? 's' : ''} to use this filter. Please purchase more credits.`)
+    if ((userCredits || 0) < selectedScene.credit_cost) {
+      setError(`You need ${selectedScene.credit_cost} credit${selectedScene.credit_cost !== 1 ? 's' : ''} to use this filter. Please purchase more credits.`)
       return
     }
 
@@ -140,7 +165,7 @@ export default function EditorPage() {
         originalUrl: imageUrl,
         processedUrl: processResponse.data.processedUrl,
         filterId: selectedFilter,
-        filterName: selectedFilterType.name,
+        filterName: selectedScene.name,
         createdAt: new Date().toISOString(),
         userId: user.id
       }
@@ -230,7 +255,7 @@ export default function EditorPage() {
     }
   }
 
-  const selectedFilterType = selectedFilter ? FILTER_TYPES.find(f => f.id === selectedFilter) : null
+  const selectedScene = selectedFilter ? scenes.find(s => String(s.id) === selectedFilter) : null
 
   const steps = [
     { id: 'upload', label: 'Upload', icon: Upload, active: currentStep === 'upload', completed: !!selectedImagePreview },
@@ -450,15 +475,17 @@ export default function EditorPage() {
                   {(currentStep === 'filter') && (
                     <div className="space-y-6">
                       <FilterSelection
+                        scenes={scenes}
                         selectedFilter={selectedFilter}
                         onFilterSelect={handleFilterSelect}
                         disabled={false}
+                        isLoading={isLoadingScenes}
                       />
-                      
+
                       {/* Generate Button */}
-                      {selectedFilter && (
+                      {selectedFilter && selectedScene && (
                         <div className="pt-4 border-t border-gray-100">
-                          <Button 
+                          <Button
                             onClick={handleProcess}
                             size="lg"
                             disabled={isProcessing}
@@ -468,7 +495,7 @@ export default function EditorPage() {
                             Generate Magic ✨
                           </Button>
                           <p className="text-gray-500 text-sm mt-2 text-center">
-                            Uses {selectedFilterType?.creditCost} credit{selectedFilterType?.creditCost !== 1 ? 's' : ''} • {userCredits || 0} available
+                            Uses {selectedScene?.credit_cost} credit{selectedScene?.credit_cost !== 1 ? 's' : ''} • {userCredits || 0} available
                           </p>
                         </div>
                       )}
@@ -480,7 +507,7 @@ export default function EditorPage() {
                     <div className="aspect-square rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 flex items-center justify-center border border-blue-100">
                       <ProcessingStatus
                         isProcessing={isProcessing}
-                        filterName={selectedFilterType?.name}
+                        filterName={selectedScene?.name}
                       />
                     </div>
                   )}

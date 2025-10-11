@@ -7,19 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Image as ImageIcon, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
-
-const FILTERS = [
-  { id: 'studio_portrait', name: 'Professional Studio', emoji: '🎭', category: 'professional' },
-  { id: 'painted_portrait', name: 'Painted Portrait', emoji: '🎨', category: 'professional' },
-  { id: 'pop_art', name: 'Pop Art', emoji: '✨', category: 'professional' },
-  { id: 'seasonal_winter', name: 'Winter Wonderland', emoji: '❄️', category: 'seasonal' },
-]
-
-const CATEGORIES = [
-  { id: 'all', name: 'All', emoji: '' },
-  { id: 'professional', name: 'Professional', emoji: '✨' },
-  { id: 'seasonal', name: 'Seasonal', emoji: '❄️' },
-]
+import { Scene } from '@/types'
 
 type Phase = 'selection' | 'loading' | 'result' | 'error'
 
@@ -50,14 +38,26 @@ export default function DashboardPage() {
   const [libraryPhotos, setLibraryPhotos] = useState<LibraryPhoto[]>([])
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false)
 
+  // Scenes state
+  const [scenes, setScenes] = useState<Scene[]>([])
+  const [isLoadingScenes, setIsLoadingScenes] = useState(true)
+  const [categories, setCategories] = useState<Array<{ id: string; name: string; emoji: string }>>([
+    { id: 'all', name: 'All', emoji: '' }
+  ])
+
   // Extract first name from email
   const firstName = user?.name || user?.email?.split('@')[0]?.split('.')[0] || 'there'
   const capitalizedName = firstName.charAt(0).toUpperCase() + firstName.slice(1)
 
   // Filter scenes by category
-  const filteredFilters = selectedCategory === 'all'
-    ? FILTERS
-    : FILTERS.filter(f => f.category === selectedCategory)
+  const filteredScenes = selectedCategory === 'all'
+    ? scenes
+    : scenes.filter(s => s.category === selectedCategory)
+
+  // Fetch scenes on mount
+  useEffect(() => {
+    fetchScenes()
+  }, [])
 
   // Fetch library photos when tab is opened
   useEffect(() => {
@@ -66,6 +66,44 @@ export default function DashboardPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab])
+
+  const fetchScenes = async () => {
+    try {
+      setIsLoadingScenes(true)
+      const response = await fetch('/api/scenes')
+      const data = await response.json()
+
+      if (Array.isArray(data)) {
+        setScenes(data)
+
+        // Extract unique categories
+        const uniqueCategories = new Set(data.map(s => s.category).filter(Boolean))
+        const categoryList = [
+          { id: 'all', name: 'All', emoji: '' },
+          ...Array.from(uniqueCategories).map(cat => ({
+            id: cat as string,
+            name: (cat as string).charAt(0).toUpperCase() + (cat as string).slice(1),
+            emoji: getCategoryEmoji(cat as string)
+          }))
+        ]
+        setCategories(categoryList)
+      }
+    } catch (error) {
+      console.error('Error fetching scenes:', error)
+    } finally {
+      setIsLoadingScenes(false)
+    }
+  }
+
+  const getCategoryEmoji = (category: string): string => {
+    const emojiMap: Record<string, string> = {
+      'professional': '✨',
+      'seasonal': '❄️',
+      'artistic': '🎨',
+      'fun': '🎉',
+    }
+    return emojiMap[category] || '🎭'
+  }
 
   const fetchLibraryPhotos = async () => {
     try {
@@ -382,7 +420,7 @@ export default function DashboardPage() {
                   {/* Category Tabs */}
                   <div className="mb-6 overflow-x-auto">
                     <div className="flex gap-2 pb-2">
-                      {CATEGORIES.map((category) => (
+                      {categories.map((category) => (
                         <button
                           key={category.id}
                           onClick={() => setSelectedCategory(category.id)}
@@ -401,40 +439,59 @@ export default function DashboardPage() {
 
                   {/* Scene Gallery */}
                   <div className="h-80 overflow-y-auto bg-gray-50 rounded-2xl p-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      {filteredFilters.map((filter) => (
-                        <div
-                          key={filter.id}
-                          onClick={() => setSelectedFilter(filter.id)}
-                          className={`cursor-pointer group ${selectedFilter === filter.id ? 'selected' : ''}`}
-                        >
-                          <div className="aspect-square bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 relative border border-gray-100">
-                            <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center">
-                              <div className="text-4xl">{filter.emoji}</div>
-                            </div>
+                    {isLoadingScenes ? (
+                      <div className="flex items-center justify-center h-full">
+                        <Loader2 className="w-8 h-8 animate-spin text-orange-600" />
+                      </div>
+                    ) : filteredScenes.length === 0 ? (
+                      <div className="flex items-center justify-center h-full text-gray-500">
+                        No scenes available
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-4">
+                        {filteredScenes.map((scene) => (
+                          <div
+                            key={scene.id}
+                            onClick={() => setSelectedFilter(String(scene.id))}
+                            className={`cursor-pointer group ${selectedFilter === String(scene.id) ? 'selected' : ''}`}
+                          >
+                            <div className="aspect-square bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 relative border border-gray-100">
+                              {scene.preview_image ? (
+                                <img
+                                  src={scene.preview_image}
+                                  alt={scene.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-50 flex items-center justify-center">
+                                  <div className="text-4xl">{getCategoryEmoji(scene.category || '')}</div>
+                                </div>
+                              )}
 
-                            {/* Hover overlay */}
-                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-200 flex items-end rounded-xl">
-                              <div className="p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                                <div className="font-semibold text-sm">{filter.name}</div>
+                              {/* Hover overlay */}
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/60 transition-all duration-200 flex items-end rounded-xl">
+                                <div className="p-3 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                  <div className="font-semibold text-sm">{scene.name}</div>
+                                  <div className="text-xs mt-1">{scene.credit_cost} credit{scene.credit_cost !== 1 ? 's' : ''}</div>
+                                </div>
+                              </div>
+
+                              {/* Selection indicator */}
+                              <div className={`absolute top-2 right-2 w-6 h-6 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 ${
+                                selectedFilter === String(scene.id) ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
+                              }`}>
+                                ✓
                               </div>
                             </div>
 
-                            {/* Selection indicator */}
-                            <div className={`absolute top-2 right-2 w-6 h-6 rounded-full bg-gradient-to-r from-orange-500 to-red-500 text-white flex items-center justify-center text-sm font-bold shadow-lg transition-all duration-200 ${
-                              selectedFilter === filter.id ? 'opacity-100 scale-100' : 'opacity-0 scale-0'
-                            }`}>
-                              ✓
+                            {/* Scene name below */}
+                            <div className="text-center mt-3">
+                              <div className="text-sm font-medium text-gray-900 truncate">{scene.name}</div>
                             </div>
                           </div>
-
-                          {/* Scene name below */}
-                          <div className="text-center mt-3">
-                            <div className="text-sm font-medium text-gray-900 truncate">{filter.name}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
 
                   {/* Generate Button */}

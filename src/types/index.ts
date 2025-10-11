@@ -14,6 +14,21 @@ export interface FilterType {
   creditCost: number
 }
 
+export interface Scene {
+  id: string | number
+  name: string
+  description: string
+  prompt: string
+  category?: string | null
+  credit_cost: number
+  preview_image?: string | null
+  active: boolean
+  display_order: number
+  usage_count: number
+  created_at: string
+  updated_at: string
+}
+
 export interface CreditPackage {
   id: string
   name: string
