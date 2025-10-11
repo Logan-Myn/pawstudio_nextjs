@@ -40,9 +40,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       name,
       description,
       credit_cost: creditCost,
-      prompt_template: promptTemplate,
-      image_reference: imageReference || null,
-      is_active: isActive !== undefined ? isActive : existingScene.is_active
+      prompt: promptTemplate,
+      preview_image: imageReference || null,
+      active: isActive !== undefined ? isActive : existingScene.active
     })
 
     if (!updatedScene) {
@@ -58,9 +58,9 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       name: updatedScene.name,
       description: updatedScene.description,
       creditCost: updatedScene.credit_cost,
-      isActive: updatedScene.is_active,
-      promptTemplate: updatedScene.prompt_template,
-      imageReference: updatedScene.image_reference || null,
+      isActive: updatedScene.active,
+      promptTemplate: updatedScene.prompt,
+      imageReference: updatedScene.preview_image || null,
       createdAt: updatedScene.created_at
     }
 
@@ -95,20 +95,10 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       )
     }
 
-    // Check if scene is being used in any images
-    const usedImages = await db.getImagesByFilterType(sceneId, 1)
-
-    if (!usedImages) {
-      console.error('Failed to check scene usage')
-      return new Response(
-        JSON.stringify({ error: 'Failed to verify scene usage' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
-    if (usedImages && usedImages.length > 0) {
-      // Instead of hard delete, soft delete by setting is_active to false
-      const deactivated = await db.updateScene(sceneId, { is_active: false })
+    // Check if scene has been used (usage_count > 0)
+    if (existingScene.usage_count > 0) {
+      // Instead of hard delete, soft delete by setting active to false
+      const deactivated = await db.updateScene(sceneId, { active: false })
 
       if (!deactivated) {
         console.error('Failed to deactivate scene')
@@ -173,9 +163,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       name: scene.name,
       description: scene.description,
       creditCost: scene.credit_cost,
-      isActive: scene.is_active,
-      promptTemplate: scene.prompt_template,
-      imageReference: scene.image_reference || null,
+      isActive: scene.active,
+      promptTemplate: scene.prompt,
+      imageReference: scene.preview_image || null,
       createdAt: scene.created_at
     }
 

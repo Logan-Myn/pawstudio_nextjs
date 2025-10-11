@@ -21,18 +21,19 @@ export async function GET(request: NextRequest) {
       id: scene.id,
       name: scene.name,
       description: scene.description,
-      prompt: scene.prompt_template,
+      promptTemplate: scene.prompt,
+      creditCost: scene.credit_cost || 1,
       category: scene.category || null,
-      preview_image: scene.image_reference || null,
-      active: scene.is_active,
-      display_order: scene.display_order || 0,
-      usage_count: scene.usage_count || 0,
-      created_at: scene.created_at,
-      updated_at: scene.updated_at || scene.created_at
+      imageReference: scene.preview_image || null,
+      isActive: scene.active,
+      displayOrder: scene.display_order || 0,
+      usageCount: scene.usage_count || 0,
+      createdAt: scene.created_at,
+      updatedAt: scene.updated_at || scene.created_at
     }))
 
     return new Response(
-      JSON.stringify(formattedScenes),
+      JSON.stringify({ success: true, scenes: formattedScenes }),
       { status: 200, headers: { 'Content-Type': 'application/json' } }
     )
   } catch (error: any) {
@@ -68,31 +69,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate a unique ID for the scene
-    const sceneId = name.toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '')
-      .replace(/\s+/g, '_')
-      .substring(0, 50)
-
-    // Check if scene ID already exists
-    const existingScene = await db.getSceneById(sceneId)
-
-    if (existingScene) {
-      return new Response(
-        JSON.stringify({ error: 'A scene with this name already exists' }),
-        { status: 409, headers: { 'Content-Type': 'application/json' } }
-      )
-    }
-
     // Create new scene
     const newScene = await db.createScene({
-      id: sceneId,
       name,
       description,
+      prompt: promptTemplate,
       credit_cost: creditCost || 1,
-      prompt_template: promptTemplate,
-      image_reference: imageReference || null,
-      is_active: isActive
+      preview_image: imageReference || null,
+      active: isActive,
+      displayOrder: 0
     })
 
     if (!newScene) {
@@ -108,9 +93,9 @@ export async function POST(request: NextRequest) {
       name: newScene.name,
       description: newScene.description,
       creditCost: newScene.credit_cost,
-      isActive: newScene.is_active,
-      promptTemplate: newScene.prompt_template,
-      imageReference: newScene.image_reference || null,
+      isActive: newScene.active,
+      promptTemplate: newScene.prompt,
+      imageReference: newScene.preview_image || null,
       createdAt: newScene.created_at
     }
 

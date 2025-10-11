@@ -14,17 +14,18 @@ export async function GET(request: NextRequest) {
     }
 
     // Filter only active scenes for public access
-    const activeScenes = scenes.filter(scene => scene.is_active)
+    const activeScenes = scenes.filter(scene => scene.active)
 
     // Format response to match mobile app expectations
     const formattedScenes = activeScenes.map(scene => ({
       id: scene.id,
       name: scene.name,
       description: scene.description,
-      prompt: scene.prompt_template,
+      prompt: scene.prompt,
       category: scene.category || null,
-      preview_image: scene.image_reference || null,
-      active: scene.is_active,
+      credit_cost: scene.credit_cost || 1,
+      preview_image: scene.preview_image || null,
+      active: scene.active,
       display_order: scene.display_order || 0,
       usage_count: scene.usage_count || 0,
       created_at: scene.created_at,

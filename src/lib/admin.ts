@@ -13,19 +13,11 @@ export interface AdminUser {
  * Returns the admin user if authorized, throws error if not
  */
 export async function verifyAdminAccess(request: NextRequest): Promise<AdminUser> {
-  const authHeader = request.headers.get('Authorization');
-
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    throw new Error('Missing or invalid authorization header');
-  }
-
-  const token = authHeader.substring(7);
-
-  // Verify the token with Better-Auth
+  // Verify the session with Better-Auth (uses cookies)
   const session = await auth.api.getSession({ headers: request.headers });
 
   if (!session || !session.user) {
-    throw new Error('Invalid or expired token');
+    throw new Error('Invalid or expired session');
   }
 
   // Get user details from database

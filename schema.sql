@@ -78,6 +78,8 @@ CREATE TABLE IF NOT EXISTS scenes (
   description TEXT,
   prompt TEXT NOT NULL,
   category TEXT,
+  credit_cost INTEGER DEFAULT 1 NOT NULL,
+  preview_image TEXT,
   active BOOLEAN DEFAULT TRUE NOT NULL,
   display_order INTEGER NOT NULL,
   usage_count INTEGER DEFAULT 0 NOT NULL,
@@ -89,6 +91,7 @@ CREATE INDEX IF NOT EXISTS idx_scenes_active ON scenes(active);
 CREATE INDEX IF NOT EXISTS idx_scenes_category ON scenes(category);
 CREATE INDEX IF NOT EXISTS idx_scenes_display_order ON scenes(display_order);
 CREATE INDEX IF NOT EXISTS idx_scenes_active_display_order ON scenes(active, display_order);
+CREATE INDEX IF NOT EXISTS idx_scenes_credit_cost ON scenes(credit_cost);
 
 -- Images table (renamed from generations for clarity - tracks processed images)
 CREATE TABLE IF NOT EXISTS images (

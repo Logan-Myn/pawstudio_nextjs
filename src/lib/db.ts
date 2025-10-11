@@ -173,7 +173,7 @@ export const db = {
     return scenes;
   },
 
-  async getSceneById(sceneId: number) {
+  async getSceneById(sceneId: string | number) {
     const [scene] = await sql`
       SELECT * FROM scenes WHERE id = ${sceneId}
     `;
@@ -181,25 +181,40 @@ export const db = {
   },
 
   async createScene(data: {
+    id?: string;
     name: string;
     description: string;
     prompt: string;
     category?: string;
-    displayOrder: number;
+    credit_cost?: number;
+    preview_image?: string;
+    displayOrder?: number;
+    active?: boolean;
   }) {
     const [scene] = await sql`
-      INSERT INTO scenes (name, description, prompt, category, display_order, active)
-      VALUES (${data.name}, ${data.description}, ${data.prompt}, ${data.category || null}, ${data.displayOrder}, true)
+      INSERT INTO scenes (name, description, prompt, category, credit_cost, preview_image, display_order, active)
+      VALUES (
+        ${data.name},
+        ${data.description},
+        ${data.prompt},
+        ${data.category || null},
+        ${data.credit_cost || 1},
+        ${data.preview_image || null},
+        ${data.displayOrder || 0},
+        ${data.active !== undefined ? data.active : true}
+      )
       RETURNING *
     `;
     return scene;
   },
 
-  async updateScene(sceneId: number, data: {
+  async updateScene(sceneId: string | number, data: {
     name?: string;
     description?: string;
     prompt?: string;
     category?: string;
+    credit_cost?: number;
+    preview_image?: string;
     active?: boolean;
     displayOrder?: number;
   }) {
@@ -221,6 +236,14 @@ export const db = {
     if (data.category !== undefined) {
       updates.push(`category = $${values.length + 1}`);
       values.push(data.category);
+    }
+    if (data.credit_cost !== undefined) {
+      updates.push(`credit_cost = $${values.length + 1}`);
+      values.push(data.credit_cost);
+    }
+    if (data.preview_image !== undefined) {
+      updates.push(`preview_image = $${values.length + 1}`);
+      values.push(data.preview_image);
     }
     if (data.active !== undefined) {
       updates.push(`active = $${values.length + 1}`);
@@ -247,18 +270,28 @@ export const db = {
     return scene;
   },
 
-  async deleteScene(sceneId: number) {
+  async deleteScene(sceneId: string | number) {
     const [scene] = await sql`
       DELETE FROM scenes WHERE id = ${sceneId} RETURNING *
     `;
     return scene;
   },
 
-  async incrementSceneUsage(sceneId: number) {
+  async incrementSceneUsage(sceneId: string | number) {
     await sql`
       UPDATE scenes
       SET usage_count = usage_count + 1
       WHERE id = ${sceneId}
     `;
+  },
+
+  // Admin queries
+  async getAllUsers() {
+    const users = await sql`
+      SELECT id, email, name, credits, role, stripe_customer_id, created_at, updated_at
+      FROM users
+      ORDER BY created_at DESC
+    `;
+    return users;
   },
 };
