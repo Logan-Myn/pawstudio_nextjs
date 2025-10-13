@@ -21,9 +21,13 @@ export async function GET(request: NextRequest) {
     // Fetch user's image history
     const images = await db.getImagesByUserId(user.id, limit, offset)
 
+    // Handle null/undefined (shouldn't happen with || [] in db function, but be safe)
     if (!images) {
-      console.error('Failed to fetch images')
-      return NextResponse.json({ error: 'Failed to fetch image history' }, { status: 500 })
+      return NextResponse.json({
+        success: true,
+        images: [],
+        total: 0
+      })
     }
 
     // Transform the data to match frontend expectations

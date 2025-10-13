@@ -122,6 +122,17 @@ export const db = {
     return images;
   },
 
+  async getImagesByUserId(userId: string, limit = 50, offset = 0) {
+    const images = await sql`
+      SELECT * FROM images
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+      LIMIT ${limit}
+      OFFSET ${offset}
+    `;
+    return images || [];
+  },
+
   // Photo queries
   async createPhoto(data: {
     userId: string;
