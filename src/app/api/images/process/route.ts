@@ -83,22 +83,11 @@ async function uploadToB2(uploadData: {uploadUrl: string, authorizationToken: st
   return response.json()
 }
 
-function getPromptForFilter(filterType: string): string {
-  const prompts: Record<string, string> = {
-    'studio_portrait': 'Black and white professional studio portrait of a dog, high-end photography style. Neutral background, soft studio lighting with smooth shadows, sharp focus on the dog, elegant composition. The image should capture the dog sitting proudly, with a refined and artistic black and white finish, like a professional pet photoshoot.',
-    'painted_portrait': 'Convert this pet photo into a classic oil painting portrait with visible brushstrokes, rich textures, warm color palette, and artistic composition. Apply traditional portrait painting techniques while preserving the pet\'s distinctive markings and expression.',
-    'pop_art': 'Transform this pet photo into a vibrant pop art style image with bold, saturated colors, high contrast, graphic elements, and a contemporary artistic feel. Use bright, eye-catching colors and clean lines while maintaining the pet\'s recognizable features.',
-    'seasonal_winter': 'Place this pet in a magical winter wonderland setting with soft falling snow, frosted elements, cool blue and white tones, and cozy winter atmosphere. Keep the pet as the focal point while adding enchanting winter elements around them.',
-  }
-
-  return prompts[filterType] || prompts['studio_portrait'] || 'Transform this pet photo professionally'
-}
-
-async function processImageWithAI(imageBuffer: Buffer, filterType: string, mimeType: string = 'image/jpeg') {
+async function processImageWithAI(imageBuffer: Buffer, prompt: string, mimeType: string = 'image/jpeg') {
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' })
-    
-    const prompt = getPromptForFilter(filterType)
+
+    console.log('Using AI prompt:', prompt.substring(0, 100) + '...')
     
     const imagePart = {
       inlineData: {
@@ -174,6 +163,19 @@ export async function POST(request: NextRequest) {
 
     console.log('Processing image:', { imageUrl, filterId, userId: user.id })
 
+    // Get scene from database
+    const sceneId = parseInt(filterId)
+    if (isNaN(sceneId)) {
+      return NextResponse.json({ error: 'Invalid filterId' }, { status: 400 })
+    }
+
+    const scene = await db.getSceneById(sceneId)
+    if (!scene) {
+      return NextResponse.json({ error: 'Scene not found' }, { status: 404 })
+    }
+
+    console.log('Scene found:', { id: scene.id, name: scene.name })
+
     // Check if user has enough credits
     console.log('Checking user credits...')
     const userData = await db.getUserById(user.id)
@@ -206,8 +208,8 @@ export async function POST(request: NextRequest) {
     const buffer = Buffer.from(imageBuffer)
     const contentType = imageResponse.headers.get('content-type') || 'image/jpeg'
 
-    // Process image with AI
-    const aiResult = await processImageWithAI(buffer, filterId, contentType)
+    // Process image with AI using the scene's prompt
+    const aiResult = await processImageWithAI(buffer, scene.prompt, contentType)
     
     console.log('AI Result:', {
       success: aiResult.success,
@@ -239,7 +241,7 @@ export async function POST(request: NextRequest) {
     // Try to update existing image record, or create a new one if it doesn't exist
     let imageRecord = await db.updateImageByOriginalUrl(user.id, imageUrl, {
       processedUrl: processedUrl,
-      filterType: filterId,
+      filterType: scene.name, // Use scene name instead of ID
       processingStatus: 'completed',
       processedAt: new Date()
     })
@@ -250,7 +252,7 @@ export async function POST(request: NextRequest) {
       imageRecord = await db.createImage({
         userId: user.id,
         originalUrl: imageUrl,
-        filterType: filterId,
+        filterType: scene.name, // Use scene name instead of ID
       })
 
       if (imageRecord) {
@@ -284,7 +286,7 @@ export async function POST(request: NextRequest) {
       user.id,
       -1,
       'usage',
-      `Applied ${filterId.replace('_', ' ')} filter`
+      `Applied ${scene.name} filter`
     )
 
     if (!transaction) {
