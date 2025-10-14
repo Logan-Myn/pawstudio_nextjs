@@ -76,11 +76,12 @@ src/
 ### Key Architecture Patterns
 
 **Authentication Flow:**
-1. Supabase Auth handles user authentication (email/password + Google OAuth)
-2. `AuthProvider` component wraps the app and syncs auth state with Zustand store
-3. User data is stored in Supabase `users` table with credits tracking
-4. New users automatically get 1 free credit on signup
-5. Protected routes use `ProtectedRoute` component, admin routes use `AdminRoute`
+1. Better Auth handles user authentication (email/password + Google OAuth)
+2. Email verification required for new signups via Resend (account@paw-studio.com)
+3. `AuthProvider` component wraps the app and syncs auth state with Zustand store
+4. User data is stored in database `users` table with credits tracking
+5. New users automatically get 3 free credits on signup
+6. Protected routes use `ProtectedRoute` component, admin routes use `AdminRoute`
 
 **Image Processing Flow:**
 1. User uploads image → `/api/images/upload` → Backblaze B2 storage
@@ -108,18 +109,30 @@ src/
 ### Environment Variables
 
 Required in `.env.local`:
+- `DATABASE_URL` - PostgreSQL database connection string
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon/public key
 - `SUPABASE_SERVICE_KEY` - Supabase service role key (server-side only)
 - `GEMINI_API_KEY` - Google Gemini API key
+- `RESEND_API_KEY` - Resend API key for email verification (format: re_xxxxx)
 - `B2_APPLICATION_KEY_ID` - Backblaze B2 key ID
 - `B2_APPLICATION_KEY` - Backblaze B2 application key
 - `B2_BUCKET_NAME` - Backblaze B2 bucket name
 - `B2_BUCKET_ID` - Backblaze B2 bucket ID
 - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Stripe public key
 - `STRIPE_SECRET_KEY` - Stripe secret key
+- `BETTER_AUTH_URL` - Better Auth base URL (http://localhost:3000 for dev)
+- `GOOGLE_CLIENT_ID` - Google OAuth client ID (optional)
+- `GOOGLE_CLIENT_SECRET` - Google OAuth client secret (optional)
 
 ### Important Implementation Details
+
+**Email Verification (Better Auth + Resend):**
+- Email verification is required for all new signups (`requireEmailVerification: true`)
+- Verification emails sent automatically on signup via Resend API
+- From address: `account@paw-studio.com` (verified domain)
+- Auto sign-in enabled after successful verification
+- Configured in `src/lib/auth.ts` with `emailVerification` settings
 
 **Supabase RLS Bypass:**
 API routes use `supabaseAdmin` client (service role) to bypass Row Level Security for credit deduction and image updates. Regular client uses anon key with RLS enforced.

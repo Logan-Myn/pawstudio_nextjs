@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { expo } from "@better-auth/expo";
 import { Pool } from "pg";
+import { resend } from "./resend";
 
 // Create a PostgreSQL connection pool for Better-Auth
 const pool = new Pool({
@@ -18,7 +19,57 @@ export const auth = betterAuth({
   ],
   emailAndPassword: {
     enabled: true,
-    requireEmailVerification: false,
+    requireEmailVerification: true,
+  },
+  emailVerification: {
+    sendOnSignUp: true,
+    autoSignInAfterVerification: true,
+    sendVerificationEmail: async ({ user, url }) => {
+      try {
+        if (!process.env.RESEND_API_KEY) {
+          console.error("Cannot send verification email: RESEND_API_KEY is not configured");
+          return;
+        }
+
+        const { data, error } = await resend.emails.send({
+          from: "PawStudio <account@paw-studio.com>",
+          to: user.email,
+          subject: "Verify your PawStudio account",
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #333;">Welcome to PawStudio!</h2>
+              <p style="color: #666; font-size: 16px;">
+                Thank you for signing up. We're excited to help you transform your pet photos with AI-powered filters!
+              </p>
+              <p style="color: #666; font-size: 16px;">
+                Please verify your email address by clicking the button below:
+              </p>
+              <div style="text-align: center; margin: 30px 0;">
+                <a href="${url}"
+                   style="background-color: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+                  Verify Email
+                </a>
+              </div>
+              <p style="color: #999; font-size: 14px;">
+                This link will expire in 24 hours for security reasons.
+              </p>
+              <p style="color: #999; font-size: 14px;">
+                If you didn't create an account with PawStudio, you can safely ignore this email.
+              </p>
+            </div>
+          `,
+        });
+
+        if (error) {
+          console.error("Failed to send verification email:", error);
+          return;
+        }
+
+        console.log("Verification email sent successfully:", data);
+      } catch (error) {
+        console.error("Error sending verification email:", error);
+      }
+    },
   },
   socialProviders: {
     google: {

@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Chrome } from 'lucide-react';
+import { Chrome, Mail } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthModalProps {
   open: boolean;
@@ -18,6 +19,7 @@ interface AuthModalProps {
 
 export function AuthModal({ open, onOpenChange, defaultTab = 'signin' }: AuthModalProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -74,9 +76,22 @@ export function AuthModal({ open, onOpenChange, defaultTab = 'signin' }: AuthMod
         return;
       }
 
-      // Success - close modal and redirect
+      // Success - show toast and close modal
+      toast({
+        title: "Check your email!",
+        description: (
+          <div className="flex items-start gap-2 mt-2">
+            <Mail className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-medium">We've sent a verification link to {signUpEmail}</p>
+              <p className="text-sm text-gray-600 mt-1">Please click the link in your email to verify your account and complete the signup process.</p>
+            </div>
+          </div>
+        ),
+      });
+
       onOpenChange(false);
-      router.push('/dashboard');
+      setIsLoading(false);
     } catch (err) {
       setError('An error occurred. Please try again.');
       setIsLoading(false);
