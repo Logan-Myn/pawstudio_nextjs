@@ -80,23 +80,20 @@ export async function PUT(request: NextRequest) {
       allowedUpdates.name = updates.name;
     }
 
-    // Always update timestamp
-    allowedUpdates.updated_at = new Date().toISOString();
+    // Update user profile using db helper
+    const updatedUser = await db.updateUserProfile(session.user.id, allowedUpdates);
 
-    if (Object.keys(allowedUpdates).length > 1) { // More than just updated_at
-      const fields = Object.keys(allowedUpdates).map((key, idx) => `${key} = $${idx + 1}`).join(', ');
-      const values = Object.values(allowedUpdates);
-      values.push(session.user.id);
-
-      await sql(
-        `UPDATE users SET ${fields} WHERE id = $${values.length}`,
-        values
+    if (!updatedUser) {
+      return NextResponse.json(
+        { error: 'Failed to update user profile' },
+        { status: 500 }
       );
     }
 
     return NextResponse.json({
       success: true,
-      message: 'Profile updated successfully'
+      message: 'Profile updated successfully',
+      user: updatedUser
     });
 
   } catch (error) {

@@ -26,6 +26,18 @@ export const db = {
     return user;
   },
 
+  async updateUserProfile(userId: string, data: { name?: string }) {
+    const [user] = await sql`
+      UPDATE users
+      SET
+        name = COALESCE(${data.name}, name),
+        updated_at = NOW()
+      WHERE id = ${userId}
+      RETURNING id, email, name, credits, role, created_at, updated_at
+    `;
+    return user;
+  },
+
   async getUserCredits(userId: string): Promise<number> {
     const [result] = await sql`
       SELECT credits FROM users WHERE id = ${userId}
