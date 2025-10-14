@@ -8,6 +8,7 @@ const B2_KEY_ID = process.env.B2_APPLICATION_KEY_ID
 const B2_APPLICATION_KEY = process.env.B2_APPLICATION_KEY
 const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME
 const B2_BUCKET_ID = process.env.B2_BUCKET_ID
+const CDN_URL = process.env.CDN_URL || 'https://cdn.paw-studio.com'
 
 interface BackblazeAuth {
   authorizationToken: string
@@ -117,7 +118,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2)
     const fileExtension = file.name.split('.').pop()
-    const fileName = `${user.id}/${timestamp}-${randomString}.${fileExtension}`
+    const fileName = `users/${user.id}/uploads/${timestamp}-${randomString}.${fileExtension}`
 
     // Upload to Backblaze B2
     const authData = await getB2Authorization()
@@ -125,8 +126,8 @@ export async function POST(request: NextRequest) {
     // Upload to B2
     await uploadToB2(uploadData, buffer, fileName, file.type)
 
-    // Construct the public URL
-    const publicUrl = `${authData.downloadUrl}/file/${B2_BUCKET_NAME}/${fileName}`
+    // Construct the public URL using CDN
+    const publicUrl = `${CDN_URL}/${fileName}`
 
     // Save to photos table for library
     const photoRecord = await db.createPhoto({

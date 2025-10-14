@@ -2,6 +2,26 @@ import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db } from '@/lib/db'
 
+const CDN_URL = process.env.CDN_URL || 'https://cdn.paw-studio.com';
+const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || 'pawstudio';
+
+// Helper function to transform B2 URLs to CDN URLs
+function transformToCDN(url: string): string {
+  if (!url) return url;
+
+  // Pattern: https://f003.backblazeb2.com/file/pawstudio/path/to/file.jpg
+  // Transform to: https://cdn.paw-studio.com/path/to/file.jpg
+  const b2Pattern = new RegExp(`https://f\\d+\\.backblazeb2\\.com/file/${B2_BUCKET_NAME}/(.+)`);
+  const match = url.match(b2Pattern);
+
+  if (match && match[1]) {
+    return `${CDN_URL}/${match[1]}`;
+  }
+
+  // If already a CDN URL or unknown format, return as-is
+  return url;
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get user from Better-Auth session
@@ -33,8 +53,8 @@ export async function GET(request: NextRequest) {
     // Transform the data to match frontend expectations
     const processedImages = images.map(image => ({
       id: image.id,
-      originalUrl: image.original_url,
-      processedUrl: image.processed_url,
+      originalUrl: transformToCDN(image.original_url),
+      processedUrl: transformToCDN(image.processed_url),
       filterId: image.filter_type,
       filterName: getFilterName(image.filter_type),
       createdAt: image.created_at,

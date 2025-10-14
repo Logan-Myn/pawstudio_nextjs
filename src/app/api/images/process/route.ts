@@ -9,6 +9,7 @@ const B2_KEY_ID = process.env.B2_APPLICATION_KEY_ID
 const B2_APPLICATION_KEY = process.env.B2_APPLICATION_KEY
 const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME
 const B2_BUCKET_ID = process.env.B2_BUCKET_ID
+const CDN_URL = process.env.CDN_URL || 'https://cdn.paw-studio.com'
 
 // Initialize Google Gemini AI
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
@@ -228,15 +229,15 @@ export async function POST(request: NextRequest) {
     const processedImageBuffer = Buffer.from(aiResult.imageData!, 'base64')
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2)
-    const processedFileName = `${user.id}/processed/${timestamp}-${randomString}.jpg`
+    const processedFileName = `users/${user.id}/generated/${timestamp}-${randomString}.jpg`
 
     const authData = await getB2Authorization()
     const uploadData = await getUploadUrl(authData)
     // Upload processed image to B2
     await uploadToB2(uploadData, processedImageBuffer, processedFileName, 'image/jpeg')
 
-    // Construct the public URL for processed image
-    const processedUrl = `${authData.downloadUrl}/file/${B2_BUCKET_NAME}/${processedFileName}`
+    // Construct the public URL for processed image using CDN
+    const processedUrl = `${CDN_URL}/${processedFileName}`
 
     // Try to update existing image record, or create a new one if it doesn't exist
     let imageRecord = await db.updateImageByOriginalUrl(user.id, imageUrl, {
