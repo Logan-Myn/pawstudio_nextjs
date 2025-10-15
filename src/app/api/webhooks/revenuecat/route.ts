@@ -47,15 +47,6 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     const expectedToken = process.env.REVENUECAT_WEBHOOK_SECRET
 
-    // DEBUG: Log what we're receiving vs expecting
-    console.log('🔍 AUTH DEBUG:', {
-      receivedHeader: authHeader,
-      expectedSecret: expectedToken,
-      match: authHeader === `Bearer ${expectedToken}`,
-      headerLength: authHeader?.length,
-      expectedLength: expectedToken ? `Bearer ${expectedToken}`.length : 0
-    })
-
     if (!expectedToken) {
       console.error('❌ REVENUECAT_WEBHOOK_SECRET not configured')
       return NextResponse.json(

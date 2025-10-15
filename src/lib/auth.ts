@@ -14,7 +14,7 @@ export const auth = betterAuth({
   plugins: [
     expo({
       // Add mobile app scheme for trusted origins
-      trustedOrigins: ["pawstudio://"],
+      trustedOrigins: ["pawstudio://", "pawstudio://*"],
     }),
   ],
   emailAndPassword: {
