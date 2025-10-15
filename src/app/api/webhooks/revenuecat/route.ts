@@ -31,6 +31,13 @@ interface RevenueCatWebhookEvent {
 
 export async function POST(request: NextRequest) {
   try {
+    // Log all headers to debug
+    const allHeaders: Record<string, string> = {}
+    request.headers.forEach((value, key) => {
+      allHeaders[key] = value.substring(0, 50) // Only log first 50 chars
+    })
+    console.log('📨 All webhook headers:', allHeaders)
+
     // Verify webhook authenticity using Authorization header
     const authHeader = request.headers.get('authorization')
     const expectedToken = process.env.REVENUECAT_WEBHOOK_SECRET
