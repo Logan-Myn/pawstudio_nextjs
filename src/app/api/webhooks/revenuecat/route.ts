@@ -15,6 +15,18 @@ const CREDIT_GRANTING_EVENTS = [
   'RENEWAL',
 ]
 
+// Events that should NOT grant credits (for logging/tracking only)
+const NON_CREDIT_EVENTS = [
+  'CANCELLATION',
+  'UNCANCELLATION',
+  'NON_RENEWING_PURCHASE_CANCELLATION',
+  'EXPIRATION',
+  'BILLING_ISSUE',
+  'PRODUCT_CHANGE',
+  'TRANSFER',
+  'TEST',
+]
+
 interface RevenueCatWebhookEvent {
   event: {
     type: string
@@ -31,23 +43,9 @@ interface RevenueCatWebhookEvent {
 
 export async function POST(request: NextRequest) {
   try {
-    // Log all headers to debug
-    const allHeaders: Record<string, string> = {}
-    request.headers.forEach((value, key) => {
-      allHeaders[key] = value.substring(0, 50) // Only log first 50 chars
-    })
-    console.log('📨 All webhook headers:', allHeaders)
-
     // Verify webhook authenticity using Authorization header
     const authHeader = request.headers.get('authorization')
     const expectedToken = process.env.REVENUECAT_WEBHOOK_SECRET
-
-    console.log('🔍 Webhook auth check:', {
-      hasAuthHeader: !!authHeader,
-      authHeaderPrefix: authHeader?.substring(0, 10),
-      hasExpectedToken: !!expectedToken,
-      expectedTokenPrefix: expectedToken?.substring(0, 10),
-    })
 
     if (!expectedToken) {
       console.error('❌ REVENUECAT_WEBHOOK_SECRET not configured')
@@ -58,10 +56,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-      console.error('❌ Invalid webhook authorization', {
-        receivedPrefix: authHeader?.substring(0, 20),
-        expectedFormat: 'Bearer ' + expectedToken?.substring(0, 10) + '...',
-      })
+      console.error('❌ Invalid webhook authorization')
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -79,10 +74,20 @@ export async function POST(request: NextRequest) {
       environment: event.environment,
     })
 
+    // Handle TEST events specially
+    if (event.type === 'TEST') {
+      console.log('✅ TEST webhook received successfully')
+      return NextResponse.json({
+        received: true,
+        message: 'Test webhook received successfully',
+        timestamp: new Date().toISOString()
+      })
+    }
+
     // Only process credit-granting events
     if (!CREDIT_GRANTING_EVENTS.includes(event.type)) {
       console.log('ℹ️ Event type does not grant credits, skipping:', event.type)
-      return NextResponse.json({ received: true })
+      return NextResponse.json({ received: true, event_type: event.type })
     }
 
     // Skip sandbox transactions in production
@@ -123,6 +128,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Idempotency check: verify this transaction hasn't been processed already
+    const transactionId = event.transaction_id || event.original_transaction_id
+    if (transactionId) {
+      const existingTransactions = await db.getCreditTransactions(userId, 100)
+      const alreadyProcessed = existingTransactions.some(
+        (t: any) => t.stripe_payment_intent_id === transactionId
+      )
+
+      if (alreadyProcessed) {
+        console.log('⚠️ Transaction already processed, skipping:', transactionId)
+        return NextResponse.json({
+          received: true,
+          duplicate: true,
+          message: 'Transaction already processed'
+        })
+      }
+    }
+
     // Add credits to user account
     const newBalance = user.credits + creditsToAdd
     const updatedUser = await db.updateUserCredits(userId, newBalance)
@@ -141,7 +164,7 @@ export async function POST(request: NextRequest) {
       creditsToAdd,
       'purchase',
       `RevenueCat ${event.type}: ${productId} (${creditsToAdd} credits)`,
-      event.transaction_id || event.original_transaction_id
+      transactionId
     )
 
     if (!transaction) {
