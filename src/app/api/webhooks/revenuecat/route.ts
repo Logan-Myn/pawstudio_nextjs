@@ -35,6 +35,13 @@ export async function POST(request: NextRequest) {
     const authHeader = request.headers.get('authorization')
     const expectedToken = process.env.REVENUECAT_WEBHOOK_SECRET
 
+    console.log('🔍 Webhook auth check:', {
+      hasAuthHeader: !!authHeader,
+      authHeaderPrefix: authHeader?.substring(0, 10),
+      hasExpectedToken: !!expectedToken,
+      expectedTokenPrefix: expectedToken?.substring(0, 10),
+    })
+
     if (!expectedToken) {
       console.error('❌ REVENUECAT_WEBHOOK_SECRET not configured')
       return NextResponse.json(
@@ -44,7 +51,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (!authHeader || authHeader !== `Bearer ${expectedToken}`) {
-      console.error('❌ Invalid webhook authorization')
+      console.error('❌ Invalid webhook authorization', {
+        receivedPrefix: authHeader?.substring(0, 20),
+        expectedFormat: 'Bearer ' + expectedToken?.substring(0, 10) + '...',
+      })
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
