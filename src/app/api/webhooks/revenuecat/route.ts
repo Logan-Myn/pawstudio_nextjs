@@ -90,10 +90,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ received: true, event_type: event.type })
     }
 
-    // Skip sandbox transactions in production
-    if (event.environment === 'SANDBOX' && process.env.NODE_ENV === 'production') {
-      console.log('⚠️ Skipping sandbox transaction in production')
+    // Skip sandbox transactions in production (unless explicitly allowed for testing)
+    const allowSandbox = process.env.REVENUECAT_ALLOW_SANDBOX === 'true'
+    if (event.environment === 'SANDBOX' && process.env.NODE_ENV === 'production' && !allowSandbox) {
+      console.log('⚠️ Skipping sandbox transaction in production (set REVENUECAT_ALLOW_SANDBOX=true to allow for testing)')
       return NextResponse.json({ received: true })
+    }
+
+    if (event.environment === 'SANDBOX' && allowSandbox) {
+      console.log('⚠️ Processing SANDBOX transaction (testing mode enabled)')
     }
 
     // Get user ID from the event
