@@ -22,12 +22,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { Edit2, Trash2, Eye, EyeOff, Image } from 'lucide-react'
+import { Edit2, Trash2, Eye, EyeOff, ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 
 interface Scene {
   id: string
   name: string
   description: string
+  category?: string | null
   creditCost: number
   isActive: boolean
   promptTemplate: string
@@ -94,8 +96,10 @@ export function SceneList({ scenes, onEdit, onDelete, onToggleActive }: SceneLis
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-20">Preview</TableHead>
                   <TableHead>Scene</TableHead>
                   <TableHead>Description</TableHead>
+                  <TableHead className="text-center">Category</TableHead>
                   <TableHead className="text-center">Cost</TableHead>
                   <TableHead className="text-center">Status</TableHead>
                   <TableHead className="text-center">Created</TableHead>
@@ -106,7 +110,7 @@ export function SceneList({ scenes, onEdit, onDelete, onToggleActive }: SceneLis
                 {scenes.length === 0 ? (
                   <TableRow>
                     <TableCell
-                      colSpan={6}
+                      colSpan={8}
                       className="text-center py-8 text-gray-500"
                     >
                       No scenes found. Create your first scene to get started.
@@ -116,23 +120,30 @@ export function SceneList({ scenes, onEdit, onDelete, onToggleActive }: SceneLis
                   scenes.map((scene) => (
                     <TableRow key={scene.id}>
                       <TableCell>
-                        <div className="flex items-center space-x-3">
-                          <div className="flex-shrink-0">
-                            {scene.imageReference ? (
-                              <div className="h-8 w-8 rounded bg-gray-100 flex items-center justify-center">
-                                <Image className="h-4 w-4 text-gray-500" />
-                              </div>
-                            ) : (
-                              <div className="h-8 w-8 rounded bg-gray-200"></div>
-                            )}
+                        <div className="flex-shrink-0">
+                          {scene.imageReference ? (
+                            <div className="relative h-12 w-12 rounded overflow-hidden bg-gray-100">
+                              <Image
+                                src={scene.imageReference}
+                                alt={scene.name}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-12 w-12 rounded bg-gray-200 flex items-center justify-center">
+                              <ImageIcon className="h-6 w-6 text-gray-400" />
+                            </div>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium text-gray-900">
+                            {scene.name}
                           </div>
-                          <div>
-                            <div className="font-medium text-gray-900">
-                              {scene.name}
-                            </div>
-                            <div className="text-sm text-gray-500">
-                              ID: {scene.id}
-                            </div>
+                          <div className="text-xs text-gray-500">
+                            ID: {scene.id}
                           </div>
                         </div>
                       </TableCell>
@@ -142,6 +153,15 @@ export function SceneList({ scenes, onEdit, onDelete, onToggleActive }: SceneLis
                             {scene.description}
                           </p>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {scene.category ? (
+                          <Badge variant="outline" className="capitalize">
+                            {scene.category}
+                          </Badge>
+                        ) : (
+                          <span className="text-xs text-gray-400">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="secondary">

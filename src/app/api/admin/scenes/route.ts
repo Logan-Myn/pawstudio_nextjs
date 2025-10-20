@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
   try {
     await verifyAdminAccess(request)
     const body = await request.json()
-    const { name, description, creditCost, promptTemplate, imageReference, isActive = true } = body
+    const { name, description, category, creditCost, promptTemplate, imageReference, isActive = true } = body
 
     // Validation
     if (!name || !description || !promptTemplate) {
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     const newScene = await db.createScene({
       name,
       description,
+      category: category || null,
       prompt: promptTemplate,
       credit_cost: creditCost || 1,
       preview_image: imageReference || null,

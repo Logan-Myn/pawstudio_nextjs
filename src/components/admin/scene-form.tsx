@@ -14,6 +14,7 @@ interface Scene {
   id: string
   name: string
   description: string
+  category?: string | null
   creditCost: number
   isActive: boolean
   promptTemplate: string
@@ -32,6 +33,7 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    category: '',
     creditCost: 1,
     isActive: true,
     promptTemplate: '',
@@ -50,6 +52,7 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
       setFormData({
         name: scene?.name || '',
         description: scene?.description || '',
+        category: scene?.category || '',
         creditCost: scene?.creditCost || 1,
         isActive: scene?.isActive ?? true,
         promptTemplate: scene?.promptTemplate || '',
@@ -96,6 +99,7 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
       await onSave({
         name: formData.name.trim(),
         description: formData.description.trim(),
+        category: formData.category.trim() || null,
         creditCost: formData.creditCost,
         isActive: formData.isActive,
         promptTemplate: formData.promptTemplate.trim(),
@@ -245,6 +249,21 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
               )}
             </div>
 
+            {/* Category */}
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <Input
+                id="category"
+                value={formData.category}
+                onChange={(e) => handleInputChange('category', e.target.value)}
+                placeholder="e.g. artistic, seasonal, professional"
+                disabled={isSubmitting}
+              />
+              <p className="text-sm text-gray-500">
+                Optional category to organize scenes (e.g., artistic, seasonal, professional)
+              </p>
+            </div>
+
             {/* Credit Cost */}
             <div className="space-y-2">
               <Label htmlFor="creditCost">Credit Cost</Label>
@@ -289,29 +308,50 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
 
               {/* Show current image if exists */}
               {formData.imageReference && !previewUrl && (
-                <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-gray-50">
-                  <Image
-                    src={formData.imageReference}
-                    alt="Scene reference"
-                    fill
-                    className="object-contain"
-                  />
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    size="sm"
-                    onClick={handleRemoveImage}
-                    disabled={isSubmitting || uploadingImage}
-                    className="absolute top-2 right-2"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                <div className="space-y-2">
+                  <div className="relative w-full h-64 border-2 border-gray-300 rounded-lg overflow-hidden bg-gray-50">
+                    <Image
+                      src={formData.imageReference}
+                      alt="Scene reference"
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">Current reference image</p>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          if (fileInputRef.current) {
+                            fileInputRef.current.click()
+                          }
+                        }}
+                        disabled={isSubmitting || uploadingImage}
+                      >
+                        <Upload className="h-4 w-4 mr-2" />
+                        Replace
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleRemoveImage}
+                        disabled={isSubmitting || uploadingImage}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Remove
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
 
               {/* Show preview of selected file */}
               {previewUrl && (
-                <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-gray-50">
+                <div className="relative w-full h-64 border-2 border-blue-300 rounded-lg overflow-hidden bg-gray-50">
                   <Image
                     src={previewUrl}
                     alt="Preview"
@@ -354,18 +394,20 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
                 </div>
               )}
 
-              {/* File input */}
+              {/* File input - hidden but still accessible */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                id="imageReference"
+                accept="image/*"
+                onChange={handleFileSelect}
+                disabled={isSubmitting || uploadingImage}
+                className="hidden"
+              />
+
+              {/* File upload area - only show when no image */}
               {!formData.imageReference && !previewUrl && (
                 <div className="border-2 border-dashed rounded-lg p-6 text-center">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    id="imageReference"
-                    accept="image/*"
-                    onChange={handleFileSelect}
-                    disabled={isSubmitting || uploadingImage}
-                    className="hidden"
-                  />
                   <label
                     htmlFor="imageReference"
                     className="cursor-pointer flex flex-col items-center"

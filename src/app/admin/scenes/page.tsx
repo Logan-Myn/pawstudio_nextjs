@@ -3,15 +3,19 @@
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Plus, RefreshCw, AlertTriangle } from 'lucide-react'
 import { SceneList } from '@/components/admin/scene-list'
 import { SceneForm } from '@/components/admin/scene-form'
+import { PromptPreview } from '@/components/admin/prompt-preview'
+import { PreviewArchive } from '@/components/admin/preview-archive'
 import { useAuthStore } from '@/lib/store/auth'
 
 interface Scene {
   id: string
   name: string
   description: string
+  category?: string | null
   creditCost: number
   isActive: boolean
   promptTemplate: string
@@ -186,88 +190,117 @@ export default function ScenesPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Scene Management</h1>
-          <p className="mt-2 text-gray-600">
-            Manage AI filter scenes available to users for image processing
-          </p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <Button
-            variant="outline"
-            onClick={fetchScenes}
-            disabled={loading}
-          >
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
-          </Button>
-          <Button onClick={handleCreateScene}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Scene
-          </Button>
-        </div>
-      </div>
-
-      {/* Error State */}
-      {error && (
-        <Card className="border-red-200 bg-red-50">
-          <CardContent className="flex items-center space-x-2 py-4">
-            <AlertTriangle className="h-5 w-5 text-red-600" />
-            <span className="text-red-800">{error}</span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={fetchScenes}
-              className="ml-auto"
-            >
-              Retry
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">Total Scenes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{scenes.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">Active Scenes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">
-              {scenes.filter(s => s.isActive).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-medium text-gray-600">Inactive Scenes</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              {scenes.filter(s => !s.isActive).length}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Scenes Table */}
       <div>
-        <SceneList
-          scenes={scenes}
-          onEdit={handleEditScene}
-          onDelete={handleDeleteScene}
-          onToggleActive={handleToggleActive}
-        />
+        <h1 className="text-3xl font-bold text-gray-900">Scene Management</h1>
+        <p className="mt-2 text-gray-600">
+          Manage AI filter scenes and test new prompts
+        </p>
       </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="manage" className="w-full">
+        <TabsList className="grid w-full max-w-3xl grid-cols-3">
+          <TabsTrigger value="manage">Manage Scenes</TabsTrigger>
+          <TabsTrigger value="preview">Preview Prompts</TabsTrigger>
+          <TabsTrigger value="archive">Preview Archive</TabsTrigger>
+        </TabsList>
+
+        {/* Manage Scenes Tab */}
+        <TabsContent value="manage" className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900">Active Scenes</h2>
+              <p className="text-sm text-gray-600">
+                View and manage existing scenes
+              </p>
+            </div>
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="outline"
+                onClick={fetchScenes}
+                disabled={loading}
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+              <Button onClick={handleCreateScene}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Scene
+              </Button>
+            </div>
+          </div>
+
+          {/* Error State */}
+          {error && (
+            <Card className="border-red-200 bg-red-50">
+              <CardContent className="flex items-center space-x-2 py-4">
+                <AlertTriangle className="h-5 w-5 text-red-600" />
+                <span className="text-red-800">{error}</span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchScenes}
+                  className="ml-auto"
+                >
+                  Retry
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-600">Total Scenes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{scenes.length}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-600">Active Scenes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-600">
+                  {scenes.filter(s => s.isActive).length}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-sm font-medium text-gray-600">Inactive Scenes</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {scenes.filter(s => !s.isActive).length}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Scenes Table */}
+          <div>
+            <SceneList
+              scenes={scenes}
+              onEdit={handleEditScene}
+              onDelete={handleDeleteScene}
+              onToggleActive={handleToggleActive}
+            />
+          </div>
+        </TabsContent>
+
+        {/* Preview Prompts Tab */}
+        <TabsContent value="preview" className="space-y-6">
+          <PromptPreview />
+        </TabsContent>
+
+        {/* Preview Archive Tab */}
+        <TabsContent value="archive" className="space-y-6">
+          <PreviewArchive />
+        </TabsContent>
+      </Tabs>
 
       {/* Scene Form Modal */}
       <SceneForm

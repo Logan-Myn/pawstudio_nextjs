@@ -8,7 +8,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     await verifyAdminAccess(request)
     const sceneId = params.id
     const body = await request.json()
-    const { name, description, creditCost, promptTemplate, imageReference, isActive } = body
+    const { name, description, category, creditCost, promptTemplate, imageReference, isActive } = body
 
     // Validation
     if (!name || !description || !promptTemplate) {
@@ -39,6 +39,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
     const updatedScene = await db.updateScene(sceneId, {
       name,
       description,
+      category: category || null,
       credit_cost: creditCost,
       prompt: promptTemplate,
       preview_image: imageReference || null,
@@ -57,6 +58,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       id: updatedScene.id,
       name: updatedScene.name,
       description: updatedScene.description,
+      category: updatedScene.category || null,
       creditCost: updatedScene.credit_cost,
       isActive: updatedScene.active,
       promptTemplate: updatedScene.prompt,
@@ -162,6 +164,7 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
       id: scene.id,
       name: scene.name,
       description: scene.description,
+      category: scene.category || null,
       creditCost: scene.credit_cost,
       isActive: scene.active,
       promptTemplate: scene.prompt,
