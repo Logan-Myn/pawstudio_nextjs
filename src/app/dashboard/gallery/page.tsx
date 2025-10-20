@@ -156,13 +156,6 @@ export default function GalleryPage() {
           </Card>
         ) : (
           <>
-            {/* Stats */}
-            <div className="mb-6 bg-white/80 backdrop-blur-sm rounded-lg p-4 border border-gray-200">
-              <p className="text-sm text-gray-600">
-                <span className="font-semibold text-gray-900">{images.length}</span> transformed {images.length === 1 ? 'photo' : 'photos'}
-              </p>
-            </div>
-
             {/* Masonry Grid */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {images.map((image) => (
@@ -311,19 +304,6 @@ export default function GalleryPage() {
                     <Download className="mr-2 h-4 w-4" />
                     Download
                   </Button>
-                </div>
-              </div>
-
-              {/* Progress indicator */}
-              <div className="flex items-center gap-2">
-                <p className="text-gray-300 text-xs">
-                  {currentIndex + 1} of {images.length}
-                </p>
-                <div className="flex-1 bg-white/20 rounded-full h-1">
-                  <div
-                    className="bg-gradient-to-r from-orange-500 to-red-500 h-1 rounded-full transition-all duration-300"
-                    style={{ width: `${((currentIndex + 1) / images.length) * 100}%` }}
-                  />
                 </div>
               </div>
             </div>

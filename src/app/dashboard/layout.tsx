@@ -60,14 +60,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                   Dashboard
                 </Link>
                 <Link
-                  href="/dashboard/library"
-                  className={`font-medium transition-colors ${
-                    pathname === '/dashboard/library' ? 'text-orange-600' : 'text-gray-700 hover:text-orange-600'
-                  }`}
-                >
-                  📸 Library
-                </Link>
-                <Link
                   href="/dashboard/gallery"
                   className={`font-medium transition-colors ${
                     pathname === '/dashboard/gallery' ? 'text-orange-600' : 'text-gray-700 hover:text-orange-600'
@@ -168,12 +160,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                   className="block px-3 py-2 text-gray-700 hover:text-orange-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
                 >
                   Dashboard
-                </Link>
-                <Link
-                  href="/dashboard/library"
-                  className="block px-3 py-2 text-gray-700 hover:text-orange-600 hover:bg-gray-50 rounded-lg font-medium transition-colors"
-                >
-                  📸 Library
                 </Link>
                 <Link
                   href="/dashboard/gallery"
