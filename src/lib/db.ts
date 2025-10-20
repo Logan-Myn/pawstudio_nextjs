@@ -241,55 +241,25 @@ export const db = {
     active?: boolean;
     displayOrder?: number;
   }) {
-    const updates: string[] = [];
-    const values: any[] = [];
+    // Get current scene data to preserve unchanged fields
+    const currentScene = await this.getSceneById(sceneId);
+    if (!currentScene) return null;
 
-    if (data.name !== undefined) {
-      updates.push(`name = $${values.length + 1}`);
-      values.push(data.name);
-    }
-    if (data.description !== undefined) {
-      updates.push(`description = $${values.length + 1}`);
-      values.push(data.description);
-    }
-    if (data.prompt !== undefined) {
-      updates.push(`prompt = $${values.length + 1}`);
-      values.push(data.prompt);
-    }
-    if (data.category !== undefined) {
-      updates.push(`category = $${values.length + 1}`);
-      values.push(data.category);
-    }
-    if (data.credit_cost !== undefined) {
-      updates.push(`credit_cost = $${values.length + 1}`);
-      values.push(data.credit_cost);
-    }
-    if (data.preview_image !== undefined) {
-      updates.push(`preview_image = $${values.length + 1}`);
-      values.push(data.preview_image);
-    }
-    if (data.active !== undefined) {
-      updates.push(`active = $${values.length + 1}`);
-      values.push(data.active);
-    }
-    if (data.displayOrder !== undefined) {
-      updates.push(`display_order = $${values.length + 1}`);
-      values.push(data.displayOrder);
-    }
-
-    if (updates.length === 0) return null;
-
-    updates.push(`updated_at = NOW()`);
-    values.push(sceneId);
-
-    const query = `
+    const [scene] = await sql`
       UPDATE scenes
-      SET ${updates.join(', ')}
-      WHERE id = $${values.length}
+      SET
+        name = ${data.name !== undefined ? data.name : currentScene.name},
+        description = ${data.description !== undefined ? data.description : currentScene.description},
+        prompt = ${data.prompt !== undefined ? data.prompt : currentScene.prompt},
+        category = ${data.category !== undefined ? data.category : currentScene.category},
+        credit_cost = ${data.credit_cost !== undefined ? data.credit_cost : currentScene.credit_cost},
+        preview_image = ${data.preview_image !== undefined ? data.preview_image : currentScene.preview_image},
+        active = ${data.active !== undefined ? data.active : currentScene.active},
+        display_order = ${data.displayOrder !== undefined ? data.displayOrder : currentScene.display_order},
+        updated_at = NOW()
+      WHERE id = ${sceneId}
       RETURNING *
     `;
-
-    const [scene] = await sql(query, values);
     return scene;
   },
 

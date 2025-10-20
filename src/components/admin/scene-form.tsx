@@ -1,13 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { X, Save, Loader2 } from 'lucide-react'
+import { X, Save, Loader2, Upload, Image as ImageIcon } from 'lucide-react'
+import Image from 'next/image'
 
 interface Scene {
   id: string
@@ -38,6 +39,10 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+  const [uploadingImage, setUploadingImage] = useState(false)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Update form data when scene changes or modal opens
   useEffect(() => {
@@ -51,6 +56,8 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
         imageReference: scene?.imageReference || ''
       })
       setErrors({})
+      setSelectedFile(null)
+      setPreviewUrl(null)
     }
   }, [scene, isOpen])
 
@@ -106,6 +113,82 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
     setFormData(prev => ({ ...prev, [field]: value }))
     if (errors[field]) {
       setErrors(prev => ({ ...prev, [field]: '' }))
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setErrors(prev => ({ ...prev, imageReference: 'Please select an image file' }))
+      return
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+      setErrors(prev => ({ ...prev, imageReference: 'Image must be less than 10MB' }))
+      return
+    }
+
+    setSelectedFile(file)
+    setErrors(prev => ({ ...prev, imageReference: '' }))
+
+    // Create preview URL
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setPreviewUrl(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleImageUpload = async () => {
+    if (!selectedFile) return
+
+    setUploadingImage(true)
+    try {
+      const uploadFormData = new FormData()
+      uploadFormData.append('image', selectedFile)
+
+      const response = await fetch('/api/admin/scenes/upload', {
+        method: 'POST',
+        body: uploadFormData
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to upload image')
+      }
+
+      const data = await response.json()
+
+      // Update form data with uploaded image URL
+      setFormData(prev => ({ ...prev, imageReference: data.url }))
+      setSelectedFile(null)
+      setPreviewUrl(null)
+
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    } catch (error) {
+      console.error('Image upload error:', error)
+      setErrors(prev => ({
+        ...prev,
+        imageReference: error instanceof Error ? error.message : 'Failed to upload image'
+      }))
+    } finally {
+      setUploadingImage(false)
+    }
+  }
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({ ...prev, imageReference: '' }))
+    setSelectedFile(null)
+    setPreviewUrl(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
     }
   }
 
@@ -200,19 +283,110 @@ export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
               </p>
             </div>
 
-            {/* Image Reference */}
+            {/* Image Reference Upload */}
             <div className="space-y-2">
-              <Label htmlFor="imageReference">Image Reference (URL)</Label>
-              <Input
-                id="imageReference"
-                type="url"
-                value={formData.imageReference}
-                onChange={(e) => handleInputChange('imageReference', e.target.value)}
-                placeholder="https://example.com/reference-image.jpg"
-                disabled={isSubmitting}
-              />
+              <Label htmlFor="imageReference">Reference Image</Label>
+
+              {/* Show current image if exists */}
+              {formData.imageReference && !previewUrl && (
+                <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-gray-50">
+                  <Image
+                    src={formData.imageReference}
+                    alt="Scene reference"
+                    fill
+                    className="object-contain"
+                  />
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={handleRemoveImage}
+                    disabled={isSubmitting || uploadingImage}
+                    className="absolute top-2 right-2"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Show preview of selected file */}
+              {previewUrl && (
+                <div className="relative w-full h-48 border rounded-lg overflow-hidden bg-gray-50">
+                  <Image
+                    src={previewUrl}
+                    alt="Preview"
+                    fill
+                    className="object-contain"
+                  />
+                  <div className="absolute bottom-2 right-2 flex gap-2">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedFile(null)
+                        setPreviewUrl(null)
+                        if (fileInputRef.current) fileInputRef.current.value = ''
+                      }}
+                      disabled={uploadingImage}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleImageUpload}
+                      disabled={uploadingImage}
+                    >
+                      {uploadingImage ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Upload
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* File input */}
+              {!formData.imageReference && !previewUrl && (
+                <div className="border-2 border-dashed rounded-lg p-6 text-center">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    id="imageReference"
+                    accept="image/*"
+                    onChange={handleFileSelect}
+                    disabled={isSubmitting || uploadingImage}
+                    className="hidden"
+                  />
+                  <label
+                    htmlFor="imageReference"
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <ImageIcon className="h-12 w-12 text-gray-400 mb-3" />
+                    <span className="text-sm font-medium text-gray-700">
+                      Click to upload image
+                    </span>
+                    <span className="text-xs text-gray-500 mt-1">
+                      PNG, JPG or WEBP (max 10MB)
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {errors.imageReference && (
+                <p className="text-sm text-red-600">{errors.imageReference}</p>
+              )}
+
               <p className="text-sm text-gray-500">
-                Optional reference image URL to show users what this scene produces.
+                Optional reference image to show users what this scene produces.
               </p>
             </div>
 
