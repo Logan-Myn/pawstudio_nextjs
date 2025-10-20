@@ -73,8 +73,8 @@ export const auth = betterAuth({
   },
   socialProviders: {
     google: {
-      // Use iOS client for mobile app token verification, fallback to web client
-      clientId: process.env.GOOGLE_CLIENT_ID_IOS || process.env.GOOGLE_CLIENT_ID || "",
+      // Use web client for OAuth flow (iOS client is for mobile app only)
+      clientId: process.env.GOOGLE_CLIENT_ID || "",
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       redirectURI: `${process.env.BETTER_AUTH_URL || 'http://localhost:3000'}/api/auth/callback/google`,
       enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),

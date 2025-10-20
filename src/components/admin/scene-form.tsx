@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -29,15 +29,30 @@ interface SceneFormProps {
 
 export function SceneForm({ scene, isOpen, onClose, onSave }: SceneFormProps) {
   const [formData, setFormData] = useState({
-    name: scene?.name || '',
-    description: scene?.description || '',
-    creditCost: scene?.creditCost || 1,
-    isActive: scene?.isActive ?? true,
-    promptTemplate: scene?.promptTemplate || '',
-    imageReference: scene?.imageReference || ''
+    name: '',
+    description: '',
+    creditCost: 1,
+    isActive: true,
+    promptTemplate: '',
+    imageReference: ''
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
+
+  // Update form data when scene changes or modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFormData({
+        name: scene?.name || '',
+        description: scene?.description || '',
+        creditCost: scene?.creditCost || 1,
+        isActive: scene?.isActive ?? true,
+        promptTemplate: scene?.promptTemplate || '',
+        imageReference: scene?.imageReference || ''
+      })
+      setErrors({})
+    }
+  }, [scene, isOpen])
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {}
