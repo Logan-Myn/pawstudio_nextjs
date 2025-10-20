@@ -11,42 +11,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
 
   useEffect(() => {
-    const syncUser = async () => {
-      if (isPending) {
-        setLoading(true);
-        return;
-      }
+    if (isPending) {
+      setLoading(true);
+      return;
+    }
 
-      if (session?.user) {
-        try {
-          // Fetch full user data from API route (not directly from DB on client)
-          const response = await fetch('/api/auth/profile');
+    if (session?.user) {
+      // Use data directly from session - no API call needed!
+      setUser({
+        id: session.user.id,
+        email: session.user.email,
+        fullName: session.user.name || session.user.email.split('@')[0],
+        createdAt: session.user.createdAt || new Date().toISOString(),
+        credits: (session.user as any).credits || 0,
+        role: ((session.user as any).role || 'user') as 'user' | 'admin' | 'super_admin',
+      });
+      setCredits((session.user as any).credits || 0);
+    } else {
+      setUser(null);
+      setCredits(0);
+    }
 
-          if (response.ok) {
-            const userData = await response.json();
-
-            setUser({
-              id: userData.id,
-              email: userData.email,
-              fullName: userData.name || userData.email.split('@')[0],
-              createdAt: userData.created_at,
-              credits: userData.credits || 0,
-              role: (userData.role || 'user') as 'user' | 'admin' | 'super_admin',
-            });
-            setCredits(userData.credits || 0);
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
-      } else {
-        setUser(null);
-        setCredits(0);
-      }
-
-      setLoading(false);
-    };
-
-    syncUser();
+    setLoading(false);
   }, [session, isPending, setUser, setLoading, setCredits]);
 
   return (
