@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { auth } from '@/lib/auth'
+import { validateSession } from '@/lib/session'
 
 export async function GET(request: NextRequest) {
   try {
     // Verify user is authenticated
-    const session = await auth.api.getSession({ headers: request.headers })
+    const userId = await validateSession(request)
 
-    if (!session || !session.user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 

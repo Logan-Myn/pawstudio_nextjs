@@ -1,53 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { db, sql } from '@/lib/db';
+import { validateSession } from '@/lib/session';
 
 export async function GET(request: NextRequest) {
   try {
     console.log('👤 /auth/profile GET - Starting...');
 
-    // Try to get user from Better-Auth session first
-    let userId: string | null = null;
-
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (session && session.user) {
-      console.log('✅ BetterAuth session found:', session.user.id);
-      userId = session.user.id;
-    } else {
-      console.log('⚠️ No BetterAuth session, checking cookie fallback...');
-
-      // Fallback: Check for manually-created session (mobile Google auth)
-      const cookieHeader = request.headers.get('cookie');
-      console.log('🍪 Cookie header:', cookieHeader ? 'exists' : 'missing');
-
-      if (cookieHeader) {
-        console.log('🔍 Cookie value:', cookieHeader.substring(0, 100) + '...');
-        const sessionTokenMatch = cookieHeader.match(/better-auth\.session_token=([^;]+)/);
-
-        if (sessionTokenMatch) {
-          const sessionToken = sessionTokenMatch[1];
-          console.log('🔑 Extracted session token:', sessionToken.substring(0, 30) + '...');
-
-          // Validate session token in database
-          const [dbSession] = await sql`
-            SELECT user_id, expires_at
-            FROM sessions
-            WHERE token = ${sessionToken}
-            AND expires_at > NOW()
-          `;
-
-          if (dbSession) {
-            console.log('✅ Valid session found in DB for user:', dbSession.user_id);
-            userId = dbSession.user_id;
-          } else {
-            console.log('❌ No valid session found in DB for token');
-          }
-        } else {
-          console.log('❌ Could not extract session token from cookie');
-        }
-      }
-    }
+    // Validate session
+    const userId = await validateSession(request);
 
     if (!userId) {
       console.log('❌ No userId found, returning 401');
@@ -108,35 +68,8 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Try to get user from Better-Auth session first
-    let userId: string | null = null;
-
-    const session = await auth.api.getSession({ headers: request.headers });
-
-    if (session && session.user) {
-      userId = session.user.id;
-    } else {
-      // Fallback: Check for manually-created session (mobile Google auth)
-      const cookieHeader = request.headers.get('cookie');
-      if (cookieHeader) {
-        const sessionTokenMatch = cookieHeader.match(/better-auth\.session_token=([^;]+)/);
-        if (sessionTokenMatch) {
-          const sessionToken = sessionTokenMatch[1];
-
-          // Validate session token in database
-          const [dbSession] = await sql`
-            SELECT user_id, expires_at
-            FROM sessions
-            WHERE token = ${sessionToken}
-            AND expires_at > NOW()
-          `;
-
-          if (dbSession) {
-            userId = dbSession.user_id;
-          }
-        }
-      }
-    }
+    // Validate session
+    const userId = await validateSession(request);
 
     if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

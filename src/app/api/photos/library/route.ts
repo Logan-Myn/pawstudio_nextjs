@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { validateSession } from '@/lib/session';
 
 const CDN_URL = process.env.CDN_URL || 'https://cdn.paw-studio.com';
 const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME || 'pawstudio';
@@ -24,15 +24,17 @@ function transformToCDN(url: string): string {
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user from Better-Auth session
-    const session = await auth.api.getSession({ headers: request.headers });
+    console.log('📸 /photos/library GET - Starting...');
 
-    if (!session || !session.user) {
+    // Validate session
+    const userId = await validateSession(request);
+
+    if (!userId) {
+      console.log('❌ No userId found, returning 401');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const userId = session.user.id;
-    console.log('Fetching photos for user:', userId);
+    console.log('📸 Fetching photos for user:', userId);
 
     // Fetch user's uploaded photos from database using db helper
     const photosData = await db.getUserPhotos(userId);

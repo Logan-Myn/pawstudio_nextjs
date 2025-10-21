@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { validateSession } from '@/lib/session';
 
 export async function DELETE(
   request: NextRequest,
@@ -14,14 +14,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Invalid photo ID' }, { status: 400 });
     }
 
-    // Get user from Better-Auth session
-    const session = await auth.api.getSession({ headers: request.headers });
+    // Validate session
+    const userId = await validateSession(request);
 
-    if (!session || !session.user) {
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
-    const userId = session.user.id;
 
     // Delete the photo (cascade will delete related generations)
     const deletedPhoto = await db.deletePhoto(photoId, userId);
