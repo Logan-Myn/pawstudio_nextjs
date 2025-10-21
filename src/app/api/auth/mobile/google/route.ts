@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { OAuth2Client } from 'google-auth-library';
 import { sql } from '@/lib/db';
-import { auth } from '@/lib/auth';
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID_IOS);
 
@@ -116,14 +115,35 @@ export async function POST(request: NextRequest) {
       console.log('✅ Account link updated');
     }
 
-    // Create session using BetterAuth API
+    // Create session manually in database
     console.log('🔐 Creating session...');
-    const sessionResult = await auth.api.createSession({
-      userId: user.id,
-      headers: request.headers,
-    });
 
-    if (!sessionResult) {
+    // Generate session token
+    const sessionToken = `${user.id}_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+    // Get client IP and user agent
+    const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+    const userAgent = request.headers.get('user-agent') || 'unknown';
+
+    // Insert session into database
+    const [session] = await sql`
+      INSERT INTO sessions (
+        id, user_id, expires_at, ip_address, user_agent, created_at, updated_at
+      )
+      VALUES (
+        ${sessionToken},
+        ${user.id},
+        ${expiresAt.toISOString()},
+        ${ipAddress},
+        ${userAgent},
+        NOW(),
+        NOW()
+      )
+      RETURNING id, user_id, expires_at, created_at
+    `;
+
+    if (!session) {
       console.log('❌ Failed to create session');
       return NextResponse.json(
         { error: 'Failed to create session' },
@@ -147,8 +167,8 @@ export async function POST(request: NextRequest) {
         image: picture,
       },
       session: {
-        token: sessionResult.session.token,
-        expiresAt: sessionResult.session.expiresAt,
+        token: session.id,
+        expiresAt: session.expires_at,
       },
     };
 
@@ -157,8 +177,7 @@ export async function POST(request: NextRequest) {
 
     // Set session cookie - BetterAuth uses "better-auth.session_token" as cookie name
     const cookieName = 'better-auth.session_token';
-    const cookieValue = sessionResult.session.token;
-    const expiresAt = new Date(sessionResult.session.expiresAt);
+    const cookieValue = session.id;
 
     response.cookies.set({
       name: cookieName,
