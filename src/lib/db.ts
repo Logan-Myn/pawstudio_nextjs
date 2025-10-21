@@ -138,6 +138,8 @@ export const db = {
     const images = await sql`
       SELECT * FROM images
       WHERE user_id = ${userId}
+        AND processed_url IS NOT NULL
+        AND processing_status = 'completed'
       ORDER BY created_at DESC
       LIMIT ${limit}
       OFFSET ${offset}
