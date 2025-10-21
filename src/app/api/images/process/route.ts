@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { db, sql } from '@/lib/db'
 import { GoogleGenerativeAI } from '@google/generative-ai'
 import crypto from 'crypto'
 
@@ -142,17 +142,45 @@ async function processImageWithAI(imageBuffer: Buffer, prompt: string, mimeType:
 export async function POST(request: NextRequest) {
   console.log('POST /api/images/process - Route handler called')
   try {
-    // Get user from Better-Auth session
-    const session = await auth.api.getSession({ headers: request.headers })
+    // Try to get user from Better-Auth session first
+    let userId: string | null = null;
+
+    const session = await auth.api.getSession({ headers: request.headers });
     console.log('Session present:', !!session)
 
-    if (!session || !session.user) {
-      console.log('No session or user, returning 401')
+    if (session && session.user) {
+      userId = session.user.id;
+    } else {
+      // Fallback: Check for manually-created session (mobile Google auth)
+      const cookieHeader = request.headers.get('cookie');
+
+      if (cookieHeader) {
+        const sessionTokenMatch = cookieHeader.match(/better-auth\.session_token=([^;]+)/);
+
+        if (sessionTokenMatch) {
+          const sessionToken = sessionTokenMatch[1];
+
+          // Validate session token in database
+          const [dbSession] = await sql`
+            SELECT user_id, expires_at
+            FROM sessions
+            WHERE token = ${sessionToken}
+            AND expires_at > NOW()
+          `;
+
+          if (dbSession) {
+            userId = dbSession.user_id;
+          }
+        }
+      }
+    }
+
+    if (!userId) {
+      console.log('No userId found, returning 401')
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const user = session.user
-    console.log('User authenticated:', user.id)
+    console.log('User authenticated:', userId)
 
     // Parse request body
     const { imageUrl, filterId } = await request.json()
@@ -162,7 +190,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'imageUrl and filterId are required' }, { status: 400 })
     }
 
-    console.log('Processing image:', { imageUrl, filterId, userId: user.id })
+    console.log('Processing image:', { imageUrl, filterId, userId })
 
     // Get scene from database
     const sceneId = parseInt(filterId)
@@ -179,7 +207,7 @@ export async function POST(request: NextRequest) {
 
     // Check if user has enough credits
     console.log('Checking user credits...')
-    const userData = await db.getUserById(user.id)
+    const userData = await db.getUserById(userId)
 
     console.log('Credits check result:', { userData })
 
@@ -229,7 +257,7 @@ export async function POST(request: NextRequest) {
     const processedImageBuffer = Buffer.from(aiResult.imageData!, 'base64')
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2)
-    const processedFileName = `users/${user.id}/generated/${timestamp}-${randomString}.jpg`
+    const processedFileName = `users/${userId}/generated/${timestamp}-${randomString}.jpg`
 
     const authData = await getB2Authorization()
     const uploadData = await getUploadUrl(authData)
@@ -240,7 +268,7 @@ export async function POST(request: NextRequest) {
     const processedUrl = `${CDN_URL}/${processedFileName}`
 
     // Try to update existing image record, or create a new one if it doesn't exist
-    let imageRecord = await db.updateImageByOriginalUrl(user.id, imageUrl, {
+    let imageRecord = await db.updateImageByOriginalUrl(userId, imageUrl, {
       processedUrl: processedUrl,
       filterType: scene.name, // Use scene name instead of ID
       processingStatus: 'completed',
@@ -251,7 +279,7 @@ export async function POST(request: NextRequest) {
     if (!imageRecord) {
       console.log('No existing image record, creating new one...')
       imageRecord = await db.createImage({
-        userId: user.id,
+        userId: userId,
         originalUrl: imageUrl,
         filterType: scene.name, // Use scene name instead of ID
       })
@@ -275,7 +303,7 @@ export async function POST(request: NextRequest) {
     const newCreditBalance = userData.credits - 1
 
     // Update user credits using Neon
-    const creditUpdateSuccess = await db.updateUserCredits(user.id, newCreditBalance)
+    const creditUpdateSuccess = await db.updateUserCredits(userId, newCreditBalance)
 
     if (!creditUpdateSuccess) {
       console.error('Failed to deduct credits')
@@ -284,7 +312,7 @@ export async function POST(request: NextRequest) {
 
     // Record transaction using Neon
     const transaction = await db.createCreditTransaction(
-      user.id,
+      userId,
       -1,
       'usage',
       `Applied ${scene.name} filter`

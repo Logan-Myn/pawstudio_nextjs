@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
-import { db } from '@/lib/db'
+import { db, sql } from '@/lib/db'
 import crypto from 'crypto'
 
 // Backblaze B2 configuration
@@ -82,14 +82,41 @@ async function uploadToB2(uploadData: {uploadUrl: string, authorizationToken: st
 
 export async function POST(request: NextRequest) {
   try {
-    // Get user from Better-Auth session
-    const session = await auth.api.getSession({ headers: request.headers })
+    // Try to get user from Better-Auth session first
+    let userId: string | null = null;
 
-    if (!session || !session.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const session = await auth.api.getSession({ headers: request.headers });
+
+    if (session && session.user) {
+      userId = session.user.id;
+    } else {
+      // Fallback: Check for manually-created session (mobile Google auth)
+      const cookieHeader = request.headers.get('cookie');
+
+      if (cookieHeader) {
+        const sessionTokenMatch = cookieHeader.match(/better-auth\.session_token=([^;]+)/);
+
+        if (sessionTokenMatch) {
+          const sessionToken = sessionTokenMatch[1];
+
+          // Validate session token in database
+          const [dbSession] = await sql`
+            SELECT user_id, expires_at
+            FROM sessions
+            WHERE token = ${sessionToken}
+            AND expires_at > NOW()
+          `;
+
+          if (dbSession) {
+            userId = dbSession.user_id;
+          }
+        }
+      }
     }
 
-    const user = session.user
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
 
     // Parse form data
     const formData = await request.formData()
@@ -118,7 +145,7 @@ export async function POST(request: NextRequest) {
     const timestamp = Date.now()
     const randomString = Math.random().toString(36).substring(2)
     const fileExtension = file.name.split('.').pop()
-    const fileName = `users/${user.id}/uploads/${timestamp}-${randomString}.${fileExtension}`
+    const fileName = `users/${userId}/uploads/${timestamp}-${randomString}.${fileExtension}`
 
     // Upload to Backblaze B2
     const authData = await getB2Authorization()
@@ -131,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     // Save to photos table for library
     const photoRecord = await db.createPhoto({
-      userId: user.id,
+      userId: userId,
       originalFilename: file.name,
       fileUrl: publicUrl,
       fileSize: file.size
@@ -144,7 +171,7 @@ export async function POST(request: NextRequest) {
 
     // Save to images table for processing tracking
     const imageRecord = await db.createImage({
-      userId: user.id,
+      userId: userId,
       originalUrl: publicUrl,
       filterType: 'none',
       photoId: photoRecord.id
