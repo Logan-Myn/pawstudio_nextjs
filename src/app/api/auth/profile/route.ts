@@ -4,15 +4,42 @@ import { db, sql } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get user from Better-Auth session
+    // Try to get user from Better-Auth session first
+    let userId: string | null = null;
+
     const session = await auth.api.getSession({ headers: request.headers });
 
-    if (!session || !session.user) {
+    if (session && session.user) {
+      userId = session.user.id;
+    } else {
+      // Fallback: Check for manually-created session (mobile Google auth)
+      const cookieHeader = request.headers.get('cookie');
+      if (cookieHeader) {
+        const sessionTokenMatch = cookieHeader.match(/better-auth\.session_token=([^;]+)/);
+        if (sessionTokenMatch) {
+          const sessionToken = sessionTokenMatch[1];
+
+          // Validate session token in database
+          const [dbSession] = await sql`
+            SELECT user_id, expires_at
+            FROM sessions
+            WHERE token = ${sessionToken}
+            AND expires_at > NOW()
+          `;
+
+          if (dbSession) {
+            userId = dbSession.user_id;
+          }
+        }
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Get user data from database
-    const userData = await db.getUserById(session.user.id);
+    const userData = await db.getUserById(userId);
 
     if (!userData) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -22,7 +49,7 @@ export async function GET(request: NextRequest) {
     const imageStats = await sql`
       SELECT processing_status
       FROM images
-      WHERE user_id = ${session.user.id}
+      WHERE user_id = ${userId}
     `;
 
     let totalProcessed = 0;
@@ -63,10 +90,37 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    // Get user from Better-Auth session
+    // Try to get user from Better-Auth session first
+    let userId: string | null = null;
+
     const session = await auth.api.getSession({ headers: request.headers });
 
-    if (!session || !session.user) {
+    if (session && session.user) {
+      userId = session.user.id;
+    } else {
+      // Fallback: Check for manually-created session (mobile Google auth)
+      const cookieHeader = request.headers.get('cookie');
+      if (cookieHeader) {
+        const sessionTokenMatch = cookieHeader.match(/better-auth\.session_token=([^;]+)/);
+        if (sessionTokenMatch) {
+          const sessionToken = sessionTokenMatch[1];
+
+          // Validate session token in database
+          const [dbSession] = await sql`
+            SELECT user_id, expires_at
+            FROM sessions
+            WHERE token = ${sessionToken}
+            AND expires_at > NOW()
+          `;
+
+          if (dbSession) {
+            userId = dbSession.user_id;
+          }
+        }
+      }
+    }
+
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -81,7 +135,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update user profile using db helper
-    const updatedUser = await db.updateUserProfile(session.user.id, allowedUpdates);
+    const updatedUser = await db.updateUserProfile(userId, allowedUpdates);
 
     if (!updatedUser) {
       return NextResponse.json(
