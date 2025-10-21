@@ -127,11 +127,14 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') || 'unknown';
 
     // Insert session into database
+    const sessionId = `sess_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+
     const [session] = await sql`
       INSERT INTO sessions (
-        id, user_id, expires_at, ip_address, user_agent, created_at, updated_at
+        id, token, user_id, expires_at, ip_address, user_agent, created_at, updated_at
       )
       VALUES (
+        ${sessionId},
         ${sessionToken},
         ${user.id},
         ${expiresAt.toISOString()},
@@ -140,7 +143,7 @@ export async function POST(request: NextRequest) {
         NOW(),
         NOW()
       )
-      RETURNING id, user_id, expires_at, created_at
+      RETURNING id, token, user_id, expires_at, created_at
     `;
 
     if (!session) {
@@ -167,7 +170,7 @@ export async function POST(request: NextRequest) {
         image: picture,
       },
       session: {
-        token: session.id,
+        token: session.token,
         expiresAt: session.expires_at,
       },
     };
@@ -177,7 +180,7 @@ export async function POST(request: NextRequest) {
 
     // Set session cookie - BetterAuth uses "better-auth.session_token" as cookie name
     const cookieName = 'better-auth.session_token';
-    const cookieValue = session.id;
+    const cookieValue = session.token;
 
     response.cookies.set({
       name: cookieName,
