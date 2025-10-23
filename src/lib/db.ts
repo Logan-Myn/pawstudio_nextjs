@@ -135,6 +135,8 @@ export const db = {
   },
 
   async getImagesByUserId(userId: string, limit = 50, offset = 0) {
+    console.log('🔍 DB: getImagesByUserId called with:', { userId, limit, offset });
+
     const images = await sql`
       SELECT * FROM images
       WHERE user_id = ${userId}
@@ -144,6 +146,19 @@ export const db = {
       LIMIT ${limit}
       OFFSET ${offset}
     `;
+
+    console.log('📊 DB: Query returned', images?.length || 0, 'images');
+
+    if (images && images.length > 0) {
+      console.log('🔍 DB: Sample image data:', {
+        id: images[0].id,
+        user_id: images[0].user_id,
+        status: images[0].processing_status,
+        has_url: !!images[0].processed_url,
+        created_at: images[0].created_at
+      });
+    }
+
     return images || [];
   },
 

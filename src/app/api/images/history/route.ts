@@ -65,6 +65,22 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
+    // DEBUG: First check ALL images for this user
+    const allUserImages = await sql`
+      SELECT id, processing_status, processed_url IS NOT NULL as has_url, created_at
+      FROM images
+      WHERE user_id = ${userId}
+      ORDER BY created_at DESC
+      LIMIT 10
+    `;
+    console.log('🔍 DEBUG: ALL images for user:', userId, '→', allUserImages.length, 'total images');
+    console.log('🔍 DEBUG: Image details:', allUserImages.map(img => ({
+      id: img.id,
+      status: img.processing_status,
+      has_url: img.has_url,
+      created: img.created_at
+    })));
+
     // Fetch user's image history
     console.log('📥 Fetching image history for user:', userId, { limit, offset })
     const images = await db.getImagesByUserId(userId, limit, offset)
