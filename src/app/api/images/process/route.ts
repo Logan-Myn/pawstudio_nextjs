@@ -269,40 +269,26 @@ export async function POST(request: NextRequest) {
 
     // Always create a NEW image record for each generation
     // This allows users to generate multiple versions of the same photo with different scenes
-    console.log('✅ Creating new image record for generation:', { userId, imageUrl: imageUrl.substring(0, 50), scene: scene.name })
-
     let imageRecord = await db.createImage({
       userId: userId,
       originalUrl: imageUrl,
       filterType: scene.name, // Use scene name instead of ID
     })
 
-    console.log('📝 Created image record:', imageRecord ? `ID: ${imageRecord.id}, Status: ${imageRecord.processing_status}` : 'FAILED')
-
     if (imageRecord) {
-      console.log('🔄 Updating image record with processed data...')
       // Now update it with the processed data
       const updatedRecord = await db.updateImage(imageRecord.id, {
         processedUrl: processedUrl,
         processingStatus: 'completed',
         processedAt: new Date()
       })
-      console.log('✅ Updated image record:', updatedRecord ? `ID: ${updatedRecord.id}, Status: ${updatedRecord.processing_status}, ProcessedURL: ${updatedRecord.processed_url ? 'YES' : 'NO'}` : 'FAILED')
       imageRecord = updatedRecord
     }
 
     if (!imageRecord) {
-      console.error('❌ Database update/create error - imageRecord is null')
+      console.error('Failed to save image record')
       return NextResponse.json({ error: 'Failed to save image record' }, { status: 500 })
     }
-
-    console.log('✅ Final image record:', {
-      id: imageRecord.id,
-      userId: imageRecord.user_id,
-      status: imageRecord.processing_status,
-      hasProcessedUrl: !!imageRecord.processed_url,
-      filterType: imageRecord.filter_type
-    })
 
     // Deduct credits and record transaction
     const newCreditBalance = userData.credits - 1
