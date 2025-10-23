@@ -97,7 +97,7 @@ CREATE INDEX IF NOT EXISTS idx_scenes_credit_cost ON scenes(credit_cost);
 CREATE TABLE IF NOT EXISTS images (
   id SERIAL PRIMARY KEY,
   user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  photo_id INTEGER REFERENCES photos(id) ON DELETE CASCADE,
+  photo_id INTEGER REFERENCES photos(id) ON DELETE SET NULL,
   original_url TEXT NOT NULL,
   processed_url TEXT,
   filter_type TEXT NOT NULL,
