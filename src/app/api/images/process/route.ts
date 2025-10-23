@@ -267,39 +267,28 @@ export async function POST(request: NextRequest) {
     // Construct the public URL for processed image using CDN
     const processedUrl = `${CDN_URL}/${processedFileName}`
 
-    // Try to update existing image record, or create a new one if it doesn't exist
-    console.log('🔍 Trying to update existing image record for:', { userId, imageUrl: imageUrl.substring(0, 50) })
-    let imageRecord = await db.updateImageByOriginalUrl(userId, imageUrl, {
-      processedUrl: processedUrl,
+    // Always create a NEW image record for each generation
+    // This allows users to generate multiple versions of the same photo with different scenes
+    console.log('✅ Creating new image record for generation:', { userId, imageUrl: imageUrl.substring(0, 50), scene: scene.name })
+
+    let imageRecord = await db.createImage({
+      userId: userId,
+      originalUrl: imageUrl,
       filterType: scene.name, // Use scene name instead of ID
-      processingStatus: 'completed',
-      processedAt: new Date()
     })
 
-    // If no existing record was updated, create a new one
-    if (!imageRecord) {
-      console.log('✅ No existing image record, creating new one...')
-      imageRecord = await db.createImage({
-        userId: userId,
-        originalUrl: imageUrl,
-        filterType: scene.name, // Use scene name instead of ID
+    console.log('📝 Created image record:', imageRecord ? `ID: ${imageRecord.id}, Status: ${imageRecord.processing_status}` : 'FAILED')
+
+    if (imageRecord) {
+      console.log('🔄 Updating image record with processed data...')
+      // Now update it with the processed data
+      const updatedRecord = await db.updateImage(imageRecord.id, {
+        processedUrl: processedUrl,
+        processingStatus: 'completed',
+        processedAt: new Date()
       })
-
-      console.log('📝 Created image record:', imageRecord ? `ID: ${imageRecord.id}, Status: ${imageRecord.processing_status}` : 'FAILED')
-
-      if (imageRecord) {
-        console.log('🔄 Updating image record with processed data...')
-        // Now update it with the processed data
-        const updatedRecord = await db.updateImage(imageRecord.id, {
-          processedUrl: processedUrl,
-          processingStatus: 'completed',
-          processedAt: new Date()
-        })
-        console.log('✅ Updated image record:', updatedRecord ? `ID: ${updatedRecord.id}, Status: ${updatedRecord.processing_status}, ProcessedURL: ${updatedRecord.processed_url ? 'YES' : 'NO'}` : 'FAILED')
-        imageRecord = updatedRecord
-      }
-    } else {
-      console.log('✅ Updated existing image record:', imageRecord ? `ID: ${imageRecord.id}, Status: ${imageRecord.processing_status}` : 'FAILED')
+      console.log('✅ Updated image record:', updatedRecord ? `ID: ${updatedRecord.id}, Status: ${updatedRecord.processing_status}, ProcessedURL: ${updatedRecord.processed_url ? 'YES' : 'NO'}` : 'FAILED')
+      imageRecord = updatedRecord
     }
 
     if (!imageRecord) {
