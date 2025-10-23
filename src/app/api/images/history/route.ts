@@ -66,10 +66,22 @@ export async function GET(request: NextRequest) {
     const offset = parseInt(searchParams.get('offset') || '0')
 
     // Fetch user's image history
+    console.log('📥 Fetching image history for user:', userId, { limit, offset })
     const images = await db.getImagesByUserId(userId, limit, offset)
+    console.log('📊 Query result:', images ? `Found ${images.length} images` : 'No images found')
+
+    if (images && images.length > 0) {
+      console.log('🔍 First image sample:', {
+        id: images[0].id,
+        status: images[0].processing_status,
+        hasProcessedUrl: !!images[0].processed_url,
+        filterType: images[0].filter_type
+      })
+    }
 
     // Handle null/undefined (shouldn't happen with || [] in db function, but be safe)
     if (!images) {
+      console.log('⚠️ No images array returned')
       return NextResponse.json({
         success: true,
         images: [],
@@ -88,6 +100,8 @@ export async function GET(request: NextRequest) {
       processedAt: image.processed_at,
       userId: image.user_id
     }))
+
+    console.log('✅ Returning', processedImages.length, 'processed images')
 
     return NextResponse.json({
       success: true,

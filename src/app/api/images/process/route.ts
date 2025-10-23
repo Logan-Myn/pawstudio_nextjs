@@ -268,6 +268,7 @@ export async function POST(request: NextRequest) {
     const processedUrl = `${CDN_URL}/${processedFileName}`
 
     // Try to update existing image record, or create a new one if it doesn't exist
+    console.log('🔍 Trying to update existing image record for:', { userId, imageUrl: imageUrl.substring(0, 50) })
     let imageRecord = await db.updateImageByOriginalUrl(userId, imageUrl, {
       processedUrl: processedUrl,
       filterType: scene.name, // Use scene name instead of ID
@@ -277,27 +278,42 @@ export async function POST(request: NextRequest) {
 
     // If no existing record was updated, create a new one
     if (!imageRecord) {
-      console.log('No existing image record, creating new one...')
+      console.log('✅ No existing image record, creating new one...')
       imageRecord = await db.createImage({
         userId: userId,
         originalUrl: imageUrl,
         filterType: scene.name, // Use scene name instead of ID
       })
 
+      console.log('📝 Created image record:', imageRecord ? `ID: ${imageRecord.id}, Status: ${imageRecord.processing_status}` : 'FAILED')
+
       if (imageRecord) {
+        console.log('🔄 Updating image record with processed data...')
         // Now update it with the processed data
-        imageRecord = await db.updateImage(imageRecord.id, {
+        const updatedRecord = await db.updateImage(imageRecord.id, {
           processedUrl: processedUrl,
           processingStatus: 'completed',
           processedAt: new Date()
         })
+        console.log('✅ Updated image record:', updatedRecord ? `ID: ${updatedRecord.id}, Status: ${updatedRecord.processing_status}, ProcessedURL: ${updatedRecord.processed_url ? 'YES' : 'NO'}` : 'FAILED')
+        imageRecord = updatedRecord
       }
+    } else {
+      console.log('✅ Updated existing image record:', imageRecord ? `ID: ${imageRecord.id}, Status: ${imageRecord.processing_status}` : 'FAILED')
     }
 
     if (!imageRecord) {
-      console.error('Database update/create error')
+      console.error('❌ Database update/create error - imageRecord is null')
       return NextResponse.json({ error: 'Failed to save image record' }, { status: 500 })
     }
+
+    console.log('✅ Final image record:', {
+      id: imageRecord.id,
+      userId: imageRecord.user_id,
+      status: imageRecord.processing_status,
+      hasProcessedUrl: !!imageRecord.processed_url,
+      filterType: imageRecord.filter_type
+    })
 
     // Deduct credits and record transaction
     const newCreditBalance = userData.credits - 1
