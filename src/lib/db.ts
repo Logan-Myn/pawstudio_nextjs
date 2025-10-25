@@ -16,6 +16,16 @@ export const db = {
     return user;
   },
 
+  async getUserAuthProvider(userId: string) {
+    const [account] = await sql`
+      SELECT provider_id
+      FROM accounts
+      WHERE user_id = ${userId}
+      LIMIT 1
+    `;
+    return account?.provider_id || null;
+  },
+
   async updateUserCredits(userId: string, newCredits: number) {
     const [user] = await sql`
       UPDATE users

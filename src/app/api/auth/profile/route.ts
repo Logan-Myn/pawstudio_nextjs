@@ -23,6 +23,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
+    // Get user's auth provider
+    const authProvider = await db.getUserAuthProvider(userId);
+
     // Get user statistics
     const imageStats = await sql`
       SELECT processing_status
@@ -46,6 +49,7 @@ export async function GET(request: NextRequest) {
       name: userData.name || '',
       credits: userData.credits,
       role: userData.role || 'user',
+      auth_provider: authProvider,
       created_at: userData.created_at,
       updated_at: userData.updated_at,
       statistics: {
