@@ -289,4 +289,33 @@ export const db = {
     `;
     return users;
   },
+
+  async updateUser(userId: string, data: {
+    name?: string;
+    email?: string;
+    credits?: number;
+    role?: string;
+  }) {
+    const [user] = await sql`
+      UPDATE users
+      SET
+        name = COALESCE(${data.name}, name),
+        email = COALESCE(${data.email}, email),
+        credits = COALESCE(${data.credits}, credits),
+        role = COALESCE(${data.role}, role),
+        updated_at = NOW()
+      WHERE id = ${userId}
+      RETURNING id, email, name, credits, role, stripe_customer_id, created_at, updated_at
+    `;
+    return user;
+  },
+
+  async deleteUser(userId: string) {
+    const [user] = await sql`
+      DELETE FROM users
+      WHERE id = ${userId}
+      RETURNING id, email, name
+    `;
+    return user;
+  },
 };
