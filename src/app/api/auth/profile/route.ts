@@ -43,6 +43,13 @@ export async function GET(request: NextRequest) {
       ).length;
     }
 
+    // Get uploaded photos count
+    const uploadedPhotosCount = await sql`
+      SELECT COUNT(*) as count
+      FROM user_photos
+      WHERE user_id = ${userId}
+    `;
+
     const profile = {
       id: userData.id,
       email: userData.email,
@@ -52,6 +59,7 @@ export async function GET(request: NextRequest) {
       auth_provider: authProvider,
       created_at: userData.created_at,
       updated_at: userData.updated_at,
+      uploaded_photos_count: uploadedPhotosCount[0]?.count || 0,
       statistics: {
         totalProcessed,
         totalPending,
