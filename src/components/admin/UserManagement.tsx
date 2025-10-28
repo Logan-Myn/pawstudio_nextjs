@@ -39,7 +39,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Search, Edit2, Trash2, Loader2, RefreshCw } from 'lucide-react'
+import { Search, Edit2, Trash2, Loader2, RefreshCw, UserPlus } from 'lucide-react'
 
 interface User {
   id: string
@@ -58,6 +58,14 @@ interface EditFormData {
   role: string
 }
 
+interface CreateFormData {
+  name: string
+  email: string
+  password: string
+  credits: number
+  role: string
+}
+
 export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([])
   const [filteredUsers, setFilteredUsers] = useState<User[]>([])
@@ -65,14 +73,23 @@ export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState('')
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingUser, setDeletingUser] = useState<User | null>(null)
+  const [creatingUser, setCreatingUser] = useState(false)
   const [editForm, setEditForm] = useState<EditFormData>({
     name: '',
     email: '',
     credits: 0,
     role: 'user',
   })
+  const [createForm, setCreateForm] = useState<CreateFormData>({
+    name: '',
+    email: '',
+    password: '',
+    credits: 3,
+    role: 'user',
+  })
   const [saving, setSaving] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [creating, setCreating] = useState(false)
 
   useEffect(() => {
     fetchUsers()
@@ -109,6 +126,50 @@ export default function UserManagement() {
       console.error('Error fetching users:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCreateClick = () => {
+    setCreatingUser(true)
+    setCreateForm({
+      name: '',
+      email: '',
+      password: '',
+      credits: 3,
+      role: 'user',
+    })
+  }
+
+  const handleCreateSubmit = async () => {
+    setCreating(true)
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(createForm),
+      })
+
+      const data = await response.json()
+
+      if (data.success) {
+        await fetchUsers()
+        setCreatingUser(false)
+        setCreateForm({
+          name: '',
+          email: '',
+          password: '',
+          credits: 3,
+          role: 'user',
+        })
+      } else {
+        console.error('Failed to create user:', data.error)
+        alert(`Error: ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Error creating user:', error)
+      alert('Failed to create user')
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -222,15 +283,25 @@ export default function UserManagement() {
             className="pl-10"
           />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={fetchUsers}
-          disabled={loading}
-        >
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="default"
+            size="sm"
+            onClick={handleCreateClick}
+          >
+            <UserPlus className="h-4 w-4 mr-2" />
+            Create User
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={fetchUsers}
+            disabled={loading}
+          >
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       <Card>
@@ -304,6 +375,99 @@ export default function UserManagement() {
           </div>
         </CardContent>
       </Card>
+
+      <Dialog open={creatingUser} onOpenChange={(open) => !open && setCreatingUser(false)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create New User</DialogTitle>
+            <DialogDescription>
+              Add a new user to the system with email and password authentication
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-name">Name</Label>
+              <Input
+                id="create-name"
+                value={createForm.name}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, name: e.target.value })
+                }
+                placeholder="Enter name (optional)"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-email">Email *</Label>
+              <Input
+                id="create-email"
+                type="email"
+                value={createForm.email}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, email: e.target.value })
+                }
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-password">Password *</Label>
+              <Input
+                id="create-password"
+                type="password"
+                value={createForm.password}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, password: e.target.value })
+                }
+                placeholder="Minimum 6 characters"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-credits">Credits</Label>
+              <Input
+                id="create-credits"
+                type="number"
+                min="0"
+                value={createForm.credits}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, credits: parseInt(e.target.value) || 0 })
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-role">Role</Label>
+              <Select
+                value={createForm.role}
+                onValueChange={(value) =>
+                  setCreateForm({ ...createForm, role: value })
+                }
+              >
+                <SelectTrigger id="create-role">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="super_admin">Super Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setCreatingUser(false)}
+              disabled={creating}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleCreateSubmit} disabled={creating}>
+              {creating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Create User
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && setEditingUser(null)}>
         <DialogContent>
