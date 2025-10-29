@@ -11,6 +11,7 @@ const pool = new Pool({
 
 export const auth = betterAuth({
   database: pool,
+  trustedOrigins: ["https://appleid.apple.com"],
   plugins: [
     expo({
       // Add mobile app scheme for trusted origins
@@ -78,6 +79,12 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
       redirectURI: `${process.env.BETTER_AUTH_URL || 'http://localhost:3000'}/api/auth/callback/google`,
       enabled: !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    },
+    apple: {
+      clientId: process.env.APPLE_CLIENT_ID || "",
+      clientSecret: process.env.APPLE_CLIENT_SECRET || "",
+      appBundleIdentifier: "com.pawstudio.mobile",
+      enabled: !!(process.env.APPLE_CLIENT_ID && process.env.APPLE_CLIENT_SECRET),
     },
   },
   session: {
