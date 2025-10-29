@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
     console.log('🍎 Got idToken, verifying...');
 
     // Verify the Apple ID token
+    // For mobile apps, Apple uses the app bundle ID as audience
+    // For web, it uses the Services ID (CLIENT_ID)
+    const validAudiences = [
+      'com.pawstudio.mobile', // App bundle ID for mobile
+      process.env.APPLE_CLIENT_ID, // Services ID for web
+    ];
+
     let decodedToken: any;
     try {
       decodedToken = await new Promise((resolve, reject) => {
@@ -45,7 +52,7 @@ export async function POST(request: NextRequest) {
           getKey,
           {
             algorithms: ['RS256'],
-            audience: process.env.APPLE_CLIENT_ID,
+            audience: validAudiences,
             issuer: 'https://appleid.apple.com',
           },
           (err, decoded) => {
@@ -58,6 +65,7 @@ export async function POST(request: NextRequest) {
         );
       });
       console.log('✅ Apple token verified successfully');
+      console.log('📧 Token audience:', decodedToken.aud);
     } catch (error) {
       console.error('❌ Apple token verification failed:', error);
       return NextResponse.json(
