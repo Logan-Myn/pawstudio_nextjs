@@ -5,9 +5,12 @@ import { useAuthStore } from '@/lib/store/auth'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { credits } from '@/lib/credits'
-import { CREDIT_PACKAGES } from '@/types'
-import { CreditCard, Sparkles, History, Star, Check, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { formatPrice } from '@/lib/utils/currency'
+import { CREDIT_PACKAGES, CreditPackage } from '@/types'
+import { CreditCard, Sparkles, History, Star, Check, Loader2, X } from 'lucide-react'
+import { StripePaymentForm } from '@/components/payment/StripePaymentForm'
+import { useToast } from '@/hooks/use-toast'
 
 interface Transaction {
   id: string
@@ -20,17 +23,22 @@ interface Transaction {
 export default function CreditsPage() {
   const { user, credits: currentCredits, setCredits } = useAuthStore()
   const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [, setIsLoading] = useState(false)
-  const [loadingPackage, setLoadingPackage] = useState<string | null>(null)
+  const [selectedPackage, setSelectedPackage] = useState<CreditPackage | null>(null)
+  const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false)
+  const { toast } = useToast()
 
   const fetchTransactions = useCallback(async () => {
     if (!user) return
-    
+
     try {
-      const data = await credits.getTransactions(user.id, 20)
-      setTransactions(data)
+      const response = await fetch('/api/credits/transactions')
+      if (response.ok) {
+        const data = await response.json()
+        setTransactions(data.transactions || [])
+      }
     } catch (error) {
       console.error('Failed to fetch transactions:', error)
+      setTransactions([])
     }
   }, [user])
 
@@ -40,28 +48,42 @@ export default function CreditsPage() {
     }
   }, [user, fetchTransactions])
 
-  const handlePurchase = async (packageId: string) => {
+  const handlePurchaseClick = (pkg: CreditPackage) => {
     if (!user) return
+    setSelectedPackage(pkg)
+    setIsPaymentDialogOpen(true)
+  }
 
-    setLoadingPackage(packageId)
-    setIsLoading(true)
+  const handlePaymentSuccess = async () => {
+    setIsPaymentDialogOpen(false)
 
-    try {
-      const result = await credits.purchaseCredits(packageId)
-      if (result.success) {
-        setCredits(result.newBalance)
-        await fetchTransactions() // Refresh transaction history
-        
-        // Show success message (you could add a toast here)
-        console.log('Credits purchased successfully!')
+    toast({
+      title: 'Payment Successful!',
+      description: `${selectedPackage?.credits} credits have been added to your account.`,
+      variant: 'default',
+    })
+
+    // Refresh credits and transactions
+    if (user) {
+      try {
+        const response = await fetch('/api/credits/balance')
+        if (response.ok) {
+          const data = await response.json()
+          setCredits(data.balance)
+        }
+      } catch (error) {
+        console.error('Failed to fetch balance:', error)
       }
-    } catch (error: unknown) {
-      console.error('Purchase failed:', (error as Error).message)
-      // Show error message (you could add a toast here)
-    } finally {
-      setLoadingPackage(null)
-      setIsLoading(false)
+      await fetchTransactions()
     }
+  }
+
+  const handlePaymentError = (error: string) => {
+    toast({
+      title: 'Payment Failed',
+      description: error || 'An error occurred while processing your payment.',
+      variant: 'destructive',
+    })
   }
 
   const formatDate = (dateString: string) => {
@@ -130,8 +152,7 @@ export default function CreditsPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {CREDIT_PACKAGES.map((pkg, index) => {
             const isPopular = index === 1 // Make the middle package popular
-            const isLoading = loadingPackage === pkg.id
-            
+
             return (
               <Card key={pkg.id} className={`relative ${isPopular ? 'ring-2 ring-purple-500 scale-105' : 'hover:shadow-lg'} transition-all duration-200`}>
                 {isPopular && (
@@ -141,20 +162,20 @@ export default function CreditsPage() {
                     </Badge>
                   </div>
                 )}
-                
+
                 <CardHeader className="text-center">
                   <div className="text-3xl font-bold text-gray-900 mb-1">
                     {pkg.credits}
                   </div>
                   <CardTitle className="text-lg">Credits</CardTitle>
                   <div className="text-2xl font-bold text-blue-600">
-                    {credits.formatPrice(pkg.price)}
+                    {formatPrice(pkg.price)}
                   </div>
                   <CardDescription>
                     ${(pkg.price / 100 / pkg.credits).toFixed(3)} per credit
                   </CardDescription>
                 </CardHeader>
-                
+
                 <CardContent className="space-y-4">
                   <ul className="space-y-2">
                     <li className="flex items-center space-x-2">
@@ -174,20 +195,12 @@ export default function CreditsPage() {
                       <span className="text-sm">Credits never expire</span>
                     </li>
                   </ul>
-                  
-                  <Button 
-                    onClick={() => handlePurchase(pkg.id)}
-                    disabled={isLoading}
+
+                  <Button
+                    onClick={() => handlePurchaseClick(pkg)}
                     className={`w-full ${isPopular ? 'bg-purple-600 hover:bg-purple-700' : ''}`}
                   >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      `Purchase ${pkg.credits} Credits`
-                    )}
+                    Purchase {pkg.credits} Credits
                   </Button>
                 </CardContent>
               </Card>
@@ -259,6 +272,28 @@ export default function CreditsPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Payment Dialog */}
+      <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center space-x-2">
+              <CreditCard className="w-5 h-5" />
+              <span>Complete Your Purchase</span>
+            </DialogTitle>
+            <DialogDescription>
+              {selectedPackage && `Purchase ${selectedPackage.credits} credits for ${formatPrice(selectedPackage.price)}`}
+            </DialogDescription>
+          </DialogHeader>
+          {selectedPackage && (
+            <StripePaymentForm
+              selectedPackage={selectedPackage}
+              onSuccess={handlePaymentSuccess}
+              onError={handlePaymentError}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
