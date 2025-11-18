@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAdminAccess } from '@/lib/admin'
-import { GoogleGenerativeAI } from '@google/generative-ai'
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
+import { processImageWithFlux } from '@/lib/flux'
 
 interface PromptTest {
   name: string
@@ -10,49 +8,9 @@ interface PromptTest {
   prompt: string
 }
 
+// Process image with FLUX.1 Kontext Pro (uses the imported function)
 async function processImageWithPrompt(imageBuffer: Buffer, prompt: string, mimeType: string = 'image/jpeg') {
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' })
-
-    const imagePart = {
-      inlineData: {
-        data: imageBuffer.toString('base64'),
-        mimeType: mimeType,
-      },
-    }
-
-    const result = await model.generateContent([prompt, imagePart])
-    const response = await result.response
-
-    let imageData: string | null = null
-
-    if (response.candidates && response.candidates.length > 0) {
-      const candidate = response.candidates[0]
-      if (candidate?.content?.parts) {
-        for (const part of candidate.content.parts) {
-          if (part?.inlineData?.data) {
-            imageData = part.inlineData.data
-            break
-          }
-        }
-      }
-    }
-
-    if (!imageData) {
-      throw new Error('No image data found in Gemini API response')
-    }
-
-    return {
-      success: true,
-      imageData: imageData,
-    }
-  } catch (error) {
-    console.error('Gemini API error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Image processing failed',
-    }
-  }
+  return processImageWithFlux(imageBuffer, prompt, mimeType)
 }
 
 // POST /api/admin/scenes/preview - Test multiple prompts with a single image

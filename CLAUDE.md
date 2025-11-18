@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**PawStudio** is an AI-powered pet photo editing application built with **Next.js 15**. The app uses Google's Gemini 2.5 Flash Image API to transform pet photos with AI-generated studio-quality filters and effects while preserving pet identity.
+**PawStudio** is an AI-powered pet photo editing application built with **Next.js 15**. The app uses Black Forest Labs' FLUX.1 Kontext Pro API to transform pet photos with AI-generated studio-quality filters and effects while preserving pet identity.
 
 ## Development Rules
 - Use supabase MCP when needed
@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Styling:** Tailwind CSS 4 with Radix UI components
 - **Database & Auth:** Supabase (PostgreSQL with Row Level Security)
 - **Image Storage:** Backblaze B2
-- **AI Processing:** Google Gemini 2.5 Flash Image API (`@google/generative-ai`)
+- **AI Processing:** Black Forest Labs FLUX.1 Kontext Pro API (`bfl-api`)
 - **Payment Processing:** Stripe (partial implementation)
 - **State Management:** Zustand
 - **Form Handling:** React Hook Form with Zod validation
@@ -88,7 +88,7 @@ src/
 2. User selects filter → `/api/images/process` route:
    - Checks user credits (minimum 1 required)
    - Downloads original image from B2
-   - Processes with Gemini 2.5 Flash Image API using filter-specific prompts
+   - Processes with FLUX.1 Kontext Pro API using filter-specific prompts
    - Uploads processed image to B2
    - Deducts 1 credit and records transaction
    - Updates image record with processed URL
@@ -113,7 +113,7 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon/public key
 - `SUPABASE_SERVICE_KEY` - Supabase service role key (server-side only)
-- `GEMINI_API_KEY` - Google Gemini API key
+- `BFL_API_KEY` - Black Forest Labs FLUX.1 Kontext Pro API key (get from https://dashboard.bfl.ai)
 - `RESEND_API_KEY` - Resend API key for email verification (format: re_xxxxx)
 - `B2_APPLICATION_KEY_ID` - Backblaze B2 key ID
 - `B2_APPLICATION_KEY` - Backblaze B2 application key
@@ -138,10 +138,12 @@ Required in `.env.local`:
 API routes use `supabaseAdmin` client (service role) to bypass Row Level Security for credit deduction and image updates. Regular client uses anon key with RLS enforced.
 
 **Image Processing API (`/api/images/process/route.ts`):**
-- Uses Gemini 2.5 Flash Image model: `gemini-2.5-flash-image-preview`
-- Filter prompts defined in `getPromptForFilter()` function
+- Uses FLUX.1 Kontext Pro via `bfl-api` package
+- Filter prompts stored in database `scenes` table and fetched dynamically
+- Processing handled by `processImageWithFlux()` from `@/lib/flux`
 - Returns base64 image data from AI response
 - Handles B2 authorization, upload URLs, and SHA1 hashing for uploads
+- Admin can test prompts via `/api/admin/scenes/preview` endpoint
 
 **State Management:**
 - `useAuthStore` (Zustand): Global auth state, user info, credits
@@ -152,15 +154,20 @@ API routes use `supabaseAdmin` client (service role) to bypass Row Level Securit
 - Strict TypeScript mode enabled
 - Type definitions in `src/types/index.ts`
 
-### Available Filters
+### Available Scenes/Filters
 
-Defined in `src/types/index.ts`:
-- `studio_bw` - Studio Black & White portrait
-- `painted_portrait` - Classic oil painting style
-- `pop_art` - Vibrant pop art graphics
-- `seasonal_winter` - Winter wonderland theme
+Scenes are stored in the `scenes` database table and managed via the admin panel:
+- Each scene has: name, description, category, prompt, credit_cost, preview_image, active status
+- Scenes can be tested using the admin panel's "Prompt Preview" feature
+- Mobile app fetches active scenes from `/api/scenes`
+- Default scenes: studio portraits, winter wonderland, pop art, etc.
+- All scenes cost 1 credit per use by default (configurable per scene)
 
-All filters cost 1 credit per use.
+**Admin Panel Features:**
+- Create/edit/delete scenes at `/admin/scenes`
+- Test multiple prompts simultaneously with a sample image
+- Archive successful prompt results for future reference
+- Upload preview images for each scene
 
 ## Business Model
 
@@ -176,3 +183,38 @@ Freemium credit system:
 - Supabase dashboard for database queries and RLS policies
 - Browser DevTools Network tab for API calls
 - Console logs extensively used in `/api/images/process` route
+- Run test script: `npx tsx scripts/test-flux.ts` (requires BFL_API_KEY in .env.local)
+
+## AI Service Migration (Gemini → FLUX.1 Kontext Pro)
+
+**Migration Date:** January 2025
+
+The application was migrated from Google Gemini 2.5 Flash to Black Forest Labs FLUX.1 Kontext Pro for improved image quality and context-aware editing capabilities.
+
+**Key Changes:**
+- **AI Service Module:** `src/lib/flux.ts` - Core FLUX.1 integration
+- **Package:** Replaced `@google/generative-ai` with `bfl-api`
+- **API Routes Updated:**
+  - `src/app/api/images/process/route.ts` - Main image processing
+  - `src/app/api/admin/scenes/preview/route.ts` - Admin prompt testing
+- **Environment Variable:** `BFL_API_KEY` (replaces `GEMINI_API_KEY`)
+
+**FLUX.1 Kontext Pro Features:**
+- Context-aware image editing and remixing
+- Faster inference (8-10 seconds per image)
+- Better prompt understanding and image context preservation
+- Multi-reference image support (up to 3 reference images)
+- Safety tolerance controls (0-6 scale)
+
+**Testing Before Deployment:**
+1. Add `BFL_API_KEY` to `.env.local`
+2. Place test pet photo at `scripts/test-pet.jpg`
+3. Run: `npx tsx scripts/test-flux.ts`
+4. Review generated images in `scripts/` folder
+5. If quality is acceptable, deploy to Vercel with `BFL_API_KEY` environment variable
+
+**Rollback Plan:**
+If issues occur, revert to Gemini by:
+1. `npm install @google/generative-ai`
+2. Restore old code in process routes
+3. Switch back to `GEMINI_API_KEY` environment variable

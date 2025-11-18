@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { db, sql } from '@/lib/db'
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { processImageWithFlux } from '@/lib/flux'
 import crypto from 'crypto'
 
 // Backblaze B2 configuration
@@ -10,9 +10,6 @@ const B2_APPLICATION_KEY = process.env.B2_APPLICATION_KEY
 const B2_BUCKET_NAME = process.env.B2_BUCKET_NAME
 const B2_BUCKET_ID = process.env.B2_BUCKET_ID
 const CDN_URL = process.env.CDN_URL || 'https://cdn.paw-studio.com'
-
-// Initialize Google Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
 interface BackblazeAuth {
   authorizationToken: string
@@ -84,59 +81,10 @@ async function uploadToB2(uploadData: {uploadUrl: string, authorizationToken: st
   return response.json()
 }
 
+// Process image with FLUX.1 Kontext Pro (imported from @/lib/flux)
+// This function is now a simple wrapper for consistency with existing code
 async function processImageWithAI(imageBuffer: Buffer, prompt: string, mimeType: string = 'image/jpeg') {
-  try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-image-preview' })
-
-    console.log('Using AI prompt:', prompt.substring(0, 100) + '...')
-    
-    const imagePart = {
-      inlineData: {
-        data: imageBuffer.toString('base64'),
-        mimeType: mimeType,
-      },
-    }
-
-    const result = await model.generateContent([prompt, imagePart])
-    const response = await result.response
-    
-    console.log('Gemini API Response candidates:', response.candidates?.length)
-    
-    // Look for image data in the response parts
-    let imageData: string | null = null
-    
-    if (response.candidates && response.candidates.length > 0) {
-      const candidate = response.candidates[0]
-      if (candidate && candidate.content && candidate.content.parts) {
-        for (const part of candidate.content.parts) {
-          console.log('Part type:', part)
-          if (part && part.inlineData && part.inlineData.data) {
-            // Found image data in inlineData
-            imageData = part.inlineData.data
-            console.log('Found image data, length:', imageData.length)
-            break
-          } else if (part && part.text) {
-            console.log('Found text part:', part.text.substring(0, 100) + '...')
-          }
-        }
-      }
-    }
-    
-    if (!imageData) {
-      throw new Error('No image data found in Gemini API response. Response may contain only text.')
-    }
-
-    return {
-      success: true,
-      imageData: imageData,
-    }
-  } catch (error) {
-    console.error('Gemini 2.5 Flash Image API error:', error)
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Image processing failed',
-    }
-  }
+  return processImageWithFlux(imageBuffer, prompt, mimeType)
 }
 
 export async function POST(request: NextRequest) {
