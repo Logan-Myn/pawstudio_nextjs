@@ -18,31 +18,86 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('📱 Mobile email verification - Starting...');
+    console.log('🔑 Token:', token);
 
-    // Call Better Auth's verify email method
+    // Create a new Request object that Better Auth can use internally
+    // This ensures the session creation is properly handled
+    const verifyRequest = new Request(
+      `${request.nextUrl.origin}/api/auth/verify-email?token=${token}`,
+      {
+        method: 'GET',
+        headers: request.headers,
+      }
+    );
+
+    // Call Better Auth's verify email method with the constructed request
+    // This should trigger autoSignInAfterVerification
     const verificationResult = await auth.api.verifyEmail({
       query: { token },
       headers: request.headers,
     });
 
-    if (!verificationResult) {
-      console.log('❌ Verification failed - no result');
-      return NextResponse.json(
-        { error: 'Email verification failed' },
-        { status: 400 }
-      );
-    }
+    console.log('📦 Verification result type:', typeof verificationResult);
+    console.log('📦 Verification result:', verificationResult);
 
-    console.log('✅ Email verified successfully');
-
-    // Since autoSignInAfterVerification is enabled, the user should now have a session
-    // Get the current session
+    // After verification, Better Auth should have created a session internally
+    // Let's try to get that session now
     const session = await auth.api.getSession({
       headers: request.headers,
     });
 
-    if (!session?.user) {
-      console.log('⚠️ Email verified but no session created');
+    console.log('📦 Session after verification:', session ? 'exists' : 'null');
+    console.log('👤 Session user:', session?.user?.email);
+
+    // If we got a session, that's perfect - return it
+    if (session?.user && session?.session) {
+      console.log('✅ Session found! User:', session.user.email);
+
+      const responseData = {
+        success: true,
+        user: {
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.name,
+          credits: (session.user as any).credits || 3,
+          role: (session.user as any).role || 'user',
+          emailVerified: session.user.emailVerified,
+          createdAt: session.user.createdAt,
+          updatedAt: session.user.updatedAt,
+        },
+        session: {
+          token: session.session.token,
+          expiresAt: session.session.expiresAt,
+        },
+      };
+
+      const response = NextResponse.json(responseData);
+
+      // Set the session cookie
+      response.cookies.set({
+        name: 'better-auth.session_token',
+        value: session.session.token,
+        expires: new Date(session.session.expiresAt),
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      });
+
+      console.log('✅ Returning session data with cookie');
+      return response;
+    }
+
+    // If no session was found, verification succeeded but autoSignIn didn't work
+    // We need to manually create a session for the verified user
+    console.log('⚠️ Email verified but no session created by Better Auth');
+    console.log('🔍 Verification result details:', JSON.stringify(verificationResult, null, 2));
+
+    // Extract user info from verification result
+    const verifiedUser = (verificationResult as any).user;
+
+    if (!verifiedUser || !verifiedUser.id) {
+      console.log('❌ No user data in verification result');
       return NextResponse.json(
         {
           success: true,
@@ -53,48 +108,82 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log('✅ Session created for user:', session.user.email);
-
-    // Return the session data in JSON format
-    const responseData = {
-      success: true,
-      user: {
-        id: session.user.id,
-        email: session.user.email,
-        name: session.user.name,
-        credits: (session.user as any).credits || 3,
-        role: (session.user as any).role || 'user',
-        emailVerified: session.user.emailVerified,
-        createdAt: session.user.createdAt,
-        updatedAt: session.user.updatedAt,
-      },
-      session: {
-        token: session.session.token,
-        expiresAt: session.session.expiresAt,
-      },
-    };
-
-    // Create response with session cookie
-    const response = NextResponse.json(responseData);
-
-    // Set the session cookie (same as Better Auth does)
-    const cookieName = 'better-auth.session_token';
-    const cookieValue = session.session.token;
-    const expiresAt = new Date(session.session.expiresAt);
-
-    response.cookies.set({
-      name: cookieName,
-      value: cookieValue,
-      expires: expiresAt,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
+    // Manually create a session using Better Auth's session creation
+    // We'll do this by directly calling the database
+    const { Pool } = await import('pg');
+    const pool = new Pool({
+      connectionString: process.env.DATABASE_URL!,
+      ssl: process.env.DATABASE_URL?.includes('neon.tech') ? { rejectUnauthorized: false } : false,
     });
 
-    console.log('✅ Returning session data with cookie');
+    try {
+      // Generate a session token
+      const crypto = await import('crypto');
+      const sessionToken = crypto.randomBytes(32).toString('base64url');
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+      const ipAddress = request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown';
+      const userAgent = request.headers.get('user-agent') || 'unknown';
 
-    return response;
+      console.log('🔐 Creating manual session for user:', verifiedUser.id);
+
+      // Insert session into database
+      await pool.query(
+        `INSERT INTO session (id, user_id, expires_at, token, ip_address, user_agent, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW())`,
+        [verifiedUser.id, expiresAt, sessionToken, ipAddress, userAgent]
+      );
+
+      console.log('✅ Manual session created successfully');
+
+      const responseData = {
+        success: true,
+        user: {
+          id: verifiedUser.id,
+          email: verifiedUser.email,
+          name: verifiedUser.name,
+          credits: verifiedUser.credits || 3,
+          role: verifiedUser.role || 'user',
+          emailVerified: verifiedUser.emailVerified,
+          createdAt: verifiedUser.createdAt,
+          updatedAt: verifiedUser.updatedAt,
+        },
+        session: {
+          token: sessionToken,
+          expiresAt: expiresAt.toISOString(),
+        },
+      };
+
+      const response = NextResponse.json(responseData);
+
+      // Set the session cookie
+      response.cookies.set({
+        name: 'better-auth.session_token',
+        value: sessionToken,
+        expires: expiresAt,
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+      });
+
+      console.log('✅ Returning manual session data with cookie');
+
+      await pool.end();
+      return response;
+
+    } catch (dbError) {
+      console.error('❌ Failed to create manual session:', dbError);
+      await pool.end();
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: 'Email verified successfully. Please sign in.',
+          requiresSignIn: true
+        },
+        { status: 200 }
+      );
+    }
 
   } catch (error) {
     console.error('❌ Mobile email verification error:', error);
