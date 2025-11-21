@@ -32,6 +32,21 @@ export const auth = betterAuth({
           return;
         }
 
+        // Convert Better Auth URL to mobile-friendly links
+        // Original URL: https://www.paw-studio.com/api/auth/verify-email?token=xxx&callbackURL=/
+        // We'll use a web page that redirects to the app (Universal Link support)
+        const urlObj = new URL(url);
+        const token = urlObj.searchParams.get('token');
+
+        // Universal Link - works on both iOS (if app installed) and web (fallback)
+        const universalLink = `https://www.paw-studio.com/verify-email?token=${token}`;
+
+        // Direct deep link as fallback
+        const deepLink = `pawstudio://verify-email?token=${token}`;
+
+        console.log('📧 Sending verification email with Universal Link:', universalLink);
+        console.log('📧 Deep link fallback:', deepLink);
+
         const { data, error } = await resend.emails.send({
           from: "PawStudio <account@paw-studio.com>",
           to: user.email,
@@ -46,7 +61,7 @@ export const auth = betterAuth({
                 Please verify your email address by clicking the button below:
               </p>
               <div style="text-align: center; margin: 30px 0;">
-                <a href="${url}"
+                <a href="${universalLink}"
                    style="background-color: #4F46E5; color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
                   Verify Email
                 </a>
@@ -56,6 +71,9 @@ export const auth = betterAuth({
               </p>
               <p style="color: #999; font-size: 14px;">
                 If you didn't create an account with PawStudio, you can safely ignore this email.
+              </p>
+              <p style="color: #999; font-size: 12px; margin-top: 20px;">
+                If the button doesn't work, you can also verify by opening the PawStudio app and checking your notifications.
               </p>
             </div>
           `,

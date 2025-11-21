@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "2TV6L85LGD.com.pawstudio.mobile",
+        "paths": [
+          "/verify-email",
+          "/verify-email/*"
+        ]
+      }
+    ]
+  }
+}
