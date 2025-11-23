@@ -94,18 +94,74 @@ export async function GET(request: NextRequest) {
     console.log('🔍 Verification result details:', JSON.stringify(verificationResult, null, 2));
 
     // Extract user info from verification result
-    const verifiedUser = (verificationResult as any).user;
+    let verifiedUser = (verificationResult as any).user;
 
+    // If verifyEmail didn't return user data, we need to fetch it from the database
+    // The token contains the email, so we can decode it to get the user
     if (!verifiedUser || !verifiedUser.id) {
-      console.log('❌ No user data in verification result');
-      return NextResponse.json(
-        {
-          success: true,
-          message: 'Email verified successfully. Please sign in.',
-          requiresSignIn: true
-        },
-        { status: 200 }
-      );
+      console.log('⚠️ No user in verification result, fetching from database...');
+
+      // Decode the JWT token to get the email
+      const tokenParts = token.split('.');
+      if (tokenParts.length !== 3) {
+        console.log('❌ Invalid token format');
+        return NextResponse.json(
+          {
+            success: true,
+            message: 'Email verified successfully. Please sign in.',
+            requiresSignIn: true
+          },
+          { status: 200 }
+        );
+      }
+
+      const payload = JSON.parse(Buffer.from(tokenParts[1], 'base64').toString());
+      const email = payload.email;
+
+      console.log('📧 Email from token:', email);
+
+      // Fetch user from database
+      const { Pool } = await import('pg');
+      const pool = new Pool({
+        connectionString: process.env.DATABASE_URL!,
+        ssl: process.env.DATABASE_URL?.includes('neon.tech') ? { rejectUnauthorized: false } : false,
+      });
+
+      try {
+        const result = await pool.query(
+          'SELECT * FROM "user" WHERE email = $1',
+          [email]
+        );
+
+        await pool.end();
+
+        if (!result.rows || result.rows.length === 0) {
+          console.log('❌ User not found in database');
+          return NextResponse.json(
+            {
+              success: true,
+              message: 'Email verified successfully. Please sign in.',
+              requiresSignIn: true
+            },
+            { status: 200 }
+          );
+        }
+
+        verifiedUser = result.rows[0];
+        console.log('✅ User fetched from database:', verifiedUser.email);
+
+      } catch (dbError) {
+        console.error('❌ Failed to fetch user from database:', dbError);
+        await pool.end();
+        return NextResponse.json(
+          {
+            success: true,
+            message: 'Email verified successfully. Please sign in.',
+            requiresSignIn: true
+          },
+          { status: 200 }
+        );
+      }
     }
 
     // Manually create a session using Better Auth's session creation
