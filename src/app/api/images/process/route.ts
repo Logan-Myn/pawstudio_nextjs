@@ -268,7 +268,15 @@ export async function POST(request: NextRequest) {
 
       console.log('Credits deducted. New balance:', newCreditBalance)
     } else {
-      console.log('Trial mode: No credits deducted')
+      console.log('Trial mode: No credits deducted, disabling trial mode now')
+
+      // Disable trial mode after first generation
+      await sql`
+        UPDATE users
+        SET trial_mode = false, updated_at = NOW()
+        WHERE id = ${userId}
+      `
+      console.log('✅ Trial mode disabled for user:', userId)
     }
 
     console.log('Image processed successfully:', processedUrl)
