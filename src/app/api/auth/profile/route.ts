@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
       email: userData.email,
       name: userData.name || '',
       credits: userData.credits,
+      trial_mode: userData.trial_mode,
       role: userData.role || 'user',
       auth_provider: authProvider,
       created_at: userData.created_at,

@@ -12,7 +12,8 @@ CREATE TABLE IF NOT EXISTS users (
   updated_at TIMESTAMP DEFAULT NOW(),
 
   -- Custom PawStudio fields
-  credits INTEGER DEFAULT 3 NOT NULL,
+  credits INTEGER DEFAULT 0 NOT NULL,
+  trial_mode BOOLEAN DEFAULT TRUE NOT NULL,
   stripe_customer_id TEXT UNIQUE,
   role TEXT DEFAULT 'user' NOT NULL CHECK (role IN ('user', 'admin', 'super_admin'))
 );

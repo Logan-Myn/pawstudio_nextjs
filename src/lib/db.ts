@@ -9,7 +9,7 @@ export const db = {
   // User queries
   async getUserById(userId: string) {
     const [user] = await sql`
-      SELECT id, email, name, credits, role, stripe_customer_id, created_at, updated_at
+      SELECT id, email, name, credits, trial_mode, role, stripe_customer_id, created_at, updated_at
       FROM users
       WHERE id = ${userId}
     `;

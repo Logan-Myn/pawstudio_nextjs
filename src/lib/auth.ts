@@ -132,7 +132,12 @@ export const auth = betterAuth({
     additionalFields: {
       credits: {
         type: "number",
-        defaultValue: 3,
+        defaultValue: 0,
+        required: false,
+      },
+      trial_mode: {
+        type: "boolean",
+        defaultValue: true,
         required: false,
       },
       role: {

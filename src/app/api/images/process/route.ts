@@ -164,10 +164,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    console.log('User credits:', userData.credits)
+    console.log('User credits:', userData.credits, 'Trial mode:', userData.trial_mode)
 
-    if (userData.credits < 1) {
-      console.log('Insufficient credits')
+    // Allow generation if user has credits OR is in trial mode
+    if (userData.credits < 1 && !userData.trial_mode) {
+      console.log('Insufficient credits and not in trial mode')
       return NextResponse.json({
         error: 'Insufficient credits. Please purchase more credits to continue.'
       }, { status: 402 })
@@ -238,27 +239,36 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save image record' }, { status: 500 })
     }
 
-    // Deduct credits and record transaction
-    const newCreditBalance = userData.credits - 1
+    // Deduct credits and record transaction (skip if in trial mode)
+    let newCreditBalance = userData.credits
 
-    // Update user credits using Neon
-    const creditUpdateSuccess = await db.updateUserCredits(userId, newCreditBalance)
+    if (!userData.trial_mode) {
+      // Normal users: deduct 1 credit
+      newCreditBalance = userData.credits - 1
 
-    if (!creditUpdateSuccess) {
-      console.error('Failed to deduct credits')
-      return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 })
-    }
+      // Update user credits using Neon
+      const creditUpdateSuccess = await db.updateUserCredits(userId, newCreditBalance)
 
-    // Record transaction using Neon
-    const transaction = await db.createCreditTransaction(
-      userId,
-      -1,
-      'usage',
-      `Applied ${scene.name} filter`
-    )
+      if (!creditUpdateSuccess) {
+        console.error('Failed to deduct credits')
+        return NextResponse.json({ error: 'Failed to deduct credits' }, { status: 500 })
+      }
 
-    if (!transaction) {
-      console.error('Failed to record transaction')
+      // Record transaction using Neon
+      const transaction = await db.createCreditTransaction(
+        userId,
+        -1,
+        'usage',
+        `Applied ${scene.name} filter`
+      )
+
+      if (!transaction) {
+        console.error('Failed to record transaction')
+      }
+
+      console.log('Credits deducted. New balance:', newCreditBalance)
+    } else {
+      console.log('Trial mode: No credits deducted')
     }
 
     console.log('Image processed successfully:', processedUrl)

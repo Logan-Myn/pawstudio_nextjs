@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     // Check if user exists by email
     console.log('🔍 Checking if user exists...');
     let [user] = await sql`
-      SELECT id, email, name, credits, role, email_verified, created_at, updated_at
+      SELECT id, email, name, credits, trial_mode, role, email_verified, created_at, updated_at
       FROM users
       WHERE email = ${email}
     `;
@@ -99,9 +99,9 @@ export async function POST(request: NextRequest) {
       const userId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
       const defaultName = email.split('@')[0];
       [user] = await sql`
-        INSERT INTO users (id, email, name, email_verified, credits, role)
-        VALUES (${userId}, ${email}, ${defaultName}, true, 3, 'user')
-        RETURNING id, email, name, credits, role, email_verified, created_at, updated_at
+        INSERT INTO users (id, email, name, email_verified, credits, trial_mode, role)
+        VALUES (${userId}, ${email}, ${defaultName}, true, 0, true, 'user')
+        RETURNING id, email, name, credits, trial_mode, role, email_verified, created_at, updated_at
       `;
       console.log('✅ User created:', user.id);
     } else {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
           UPDATE users
           SET email_verified = true, updated_at = NOW()
           WHERE id = ${user.id}
-          RETURNING id, email, name, credits, role, email_verified, created_at, updated_at
+          RETURNING id, email, name, credits, trial_mode, role, email_verified, created_at, updated_at
         `;
       }
     }
@@ -202,6 +202,7 @@ export async function POST(request: NextRequest) {
         email: user.email,
         name: user.name,
         credits: user.credits,
+        trialMode: user.trial_mode,
         role: user.role,
         emailVerified: user.email_verified,
         createdAt: user.created_at,
