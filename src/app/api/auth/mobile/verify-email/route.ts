@@ -129,7 +129,7 @@ export async function GET(request: NextRequest) {
 
       try {
         const result = await pool.query(
-          'SELECT * FROM "user" WHERE email = $1',
+          'SELECT * FROM users WHERE email = $1',
           [email]
         );
 
@@ -184,7 +184,7 @@ export async function GET(request: NextRequest) {
 
       // Insert session into database
       await pool.query(
-        `INSERT INTO session (id, user_id, expires_at, token, ip_address, user_agent, created_at, updated_at)
+        `INSERT INTO sessions (id, user_id, expires_at, token, ip_address, user_agent, created_at, updated_at)
          VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, NOW(), NOW())`,
         [verifiedUser.id, expiresAt, sessionToken, ipAddress, userAgent]
       );
