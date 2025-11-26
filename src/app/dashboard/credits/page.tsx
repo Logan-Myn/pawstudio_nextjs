@@ -264,7 +264,7 @@ export default function CreditsPage() {
               <ul className="space-y-1 text-sm text-blue-800">
                 <li>• Each AI transformation uses 1 credit</li>
                 <li>• Credits never expire - use them whenever you want</li>
-                <li>• New users get 1 free credit to try PawStudio</li>
+                <li>• Your first photo transformation is free</li>
                 <li>• All filter styles are included with your credits</li>
                 <li>• Download your transformations in high resolution</li>
               </ul>

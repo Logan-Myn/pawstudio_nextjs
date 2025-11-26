@@ -265,7 +265,7 @@ export function AuthModal({ open, onOpenChange, defaultTab = 'signin' }: AuthMod
               </Button>
 
               <p className="text-xs text-center text-gray-500">
-                By signing up, you get <span className="font-semibold text-blue-600">3 free credits</span> to try PawStudio
+                Your first photo transformation is <span className="font-semibold text-blue-600">completely free</span>
               </p>
             </form>
           </TabsContent>

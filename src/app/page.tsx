@@ -130,12 +130,12 @@ export default function LandingPage() {
                   onClick={openSignUp}
                   className="inline-flex justify-center items-center py-4 px-8 text-lg font-bold text-center text-white rounded-2xl bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 hover:from-orange-600 hover:via-red-600 hover:to-orange-700 focus:ring-4 focus:ring-orange-300 shadow-xl hover:shadow-orange-500/25 transform hover:scale-105 transition-all duration-300"
                 >
-                  Start Your Free Trial
+                  Get Started Free
                   <svg className="w-5 h-5 ml-3 -mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                   </svg>
                 </Button>
-                <p className="mt-4 text-sm text-orange-200">✨ 3 free photos included • No credit card required</p>
+                <p className="mt-4 text-sm text-orange-200">✨ Your first photo is free • No credit card required</p>
               </div>
             </div>
 
@@ -294,7 +294,7 @@ export default function LandingPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
               </svg>
             </Button>
-            <p className="mt-4 text-gray-600">Start with 3 free photos - no credit card required</p>
+            <p className="mt-4 text-gray-600">Your first photo is free - no credit card required</p>
           </div>
         </div>
       </section>
@@ -310,18 +310,19 @@ export default function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {/* Free Plan */}
+            {/* Starter Pack */}
             <div className="bg-white rounded-3xl p-6 border-2 border-gray-200 relative hover:border-orange-300 transition-all duration-300">
               <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Free Trial</h3>
-                <div className="text-3xl font-bold text-gray-900 mb-4">$0</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Starter</h3>
+                <div className="text-3xl font-bold text-gray-900 mb-1">$2.99</div>
+                <div className="text-gray-600 mb-4 text-sm">5 photo credits</div>
               </div>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-center text-sm">
                   <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span>3 free photo transformations</span>
+                  <span>5 photo transformations</span>
                 </li>
                 <li className="flex items-center text-sm">
                   <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -335,12 +336,15 @@ export default function LandingPage() {
                   </svg>
                   <span>High-resolution downloads</span>
                 </li>
+                <li className="flex items-center text-sm">
+                  <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
+                  </svg>
+                  <span>Credits never expire</span>
+                </li>
               </ul>
-              <Button
-                onClick={openSignUp}
-                className="w-full py-3 px-4 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm"
-              >
-                Start Free Trial
+              <Button className="w-full py-3 px-4 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm">
+                Get Starter
               </Button>
             </div>
 
@@ -350,7 +354,7 @@ export default function LandingPage() {
                 Most Popular
               </div>
               <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Credit Pack</h3>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Premium</h3>
                 <div className="text-3xl font-bold text-gray-900 mb-1">$9.99</div>
                 <div className="text-gray-600 mb-4 text-sm">20 photo credits</div>
               </div>
@@ -381,23 +385,23 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Button className="w-full py-3 px-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all text-sm">
-                Get Credits
+                Get Premium
               </Button>
             </div>
 
             {/* Bulk Pack */}
             <div className="bg-white rounded-3xl p-6 border-2 border-gray-200 relative hover:border-orange-300 transition-all duration-300">
               <div className="text-center">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">Bulk Pack</h3>
-                <div className="text-3xl font-bold text-gray-900 mb-1">$39.99</div>
-                <div className="text-gray-600 mb-4 text-sm">100 photo credits</div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">Ultimate</h3>
+                <div className="text-3xl font-bold text-gray-900 mb-1">$19.99</div>
+                <div className="text-gray-600 mb-4 text-sm">50 photo credits</div>
               </div>
               <ul className="space-y-3 mb-6">
                 <li className="flex items-center text-sm">
                   <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path>
                   </svg>
-                  <span>100 photo transformations</span>
+                  <span>50 photo transformations</span>
                 </li>
                 <li className="flex items-center text-sm">
                   <svg className="w-4 h-4 text-green-500 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -419,7 +423,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Button className="w-full py-3 px-4 bg-gray-100 text-gray-900 rounded-xl font-semibold hover:bg-gray-200 transition-colors text-sm">
-                Get Bulk Credits
+                Get Ultimate
               </Button>
             </div>
           </div>
@@ -442,15 +446,41 @@ export default function LandingPage() {
             onClick={openSignUp}
             className="inline-flex justify-center items-center py-4 px-8 text-lg font-bold text-center text-orange-600 bg-white rounded-2xl hover:bg-orange-50 focus:ring-4 focus:ring-orange-300 shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300 mr-4"
           >
-            Start Your Free Trial
+            Get Started Free
             <svg className="w-5 h-5 ml-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
             </svg>
           </Button>
 
-          <p className="text-orange-200 text-sm mt-6">✨ 3 free transformations included • No credit card required • Get started in 30 seconds</p>
+          <p className="text-orange-200 text-sm mt-6">✨ First photo free • No credit card required • Get started in 30 seconds</p>
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="bg-gray-900 py-12">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row justify-between items-center">
+            <div className="flex items-center space-x-3 mb-6 md:mb-0">
+              <span className="text-2xl">🐾</span>
+              <span className="text-xl font-bold text-white">PawStudio</span>
+            </div>
+            <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-400">
+              <Link href="/terms" className="hover:text-white transition-colors">
+                Terms of Service
+              </Link>
+              <Link href="/privacy" className="hover:text-white transition-colors">
+                Privacy Policy
+              </Link>
+              <a href="mailto:support@paw-studio.com" className="hover:text-white transition-colors">
+                Contact
+              </a>
+            </div>
+          </div>
+          <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
+            <p>&copy; {new Date().getFullYear()} PawStudio. All rights reserved.</p>
+          </div>
+        </div>
+      </footer>
 
       {/* Auth Modal */}
       <AuthModal
