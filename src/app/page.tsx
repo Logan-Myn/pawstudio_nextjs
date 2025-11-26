@@ -471,9 +471,9 @@ export default function LandingPage() {
               <Link href="/privacy" className="hover:text-white transition-colors">
                 Privacy Policy
               </Link>
-              <a href="mailto:support@paw-studio.com" className="hover:text-white transition-colors">
-                Contact
-              </a>
+              <Link href="/support" className="hover:text-white transition-colors">
+                Support
+              </Link>
             </div>
           </div>
           <div className="mt-8 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
