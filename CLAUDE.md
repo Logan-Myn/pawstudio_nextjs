@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**PawStudio** is an AI-powered pet photo editing application built with **Next.js 15**. The app uses Black Forest Labs' FLUX.1 Kontext Pro API to transform pet photos with AI-generated studio-quality filters and effects while preserving pet identity.
+**PawStudio** is an AI-powered pet photo editing application built with **Next.js 15**. The app uses Black Forest Labs' FLUX.2 Pro API to transform pet photos with AI-generated studio-quality filters and effects while preserving pet identity.
 
 ## Development Rules
 - Use supabase MCP when needed
@@ -19,7 +19,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Styling:** Tailwind CSS 4 with Radix UI components
 - **Database & Auth:** Supabase (PostgreSQL with Row Level Security)
 - **Image Storage:** Backblaze B2
-- **AI Processing:** Black Forest Labs FLUX.1 Kontext Pro API (`bfl-api`)
+- **AI Processing:** Black Forest Labs FLUX.2 Pro API (native fetch)
 - **Payment Processing:** Stripe (partial implementation)
 - **State Management:** Zustand
 - **Form Handling:** React Hook Form with Zod validation
@@ -88,7 +88,7 @@ src/
 2. User selects filter → `/api/images/process` route:
    - Checks user credits (minimum 1 required)
    - Downloads original image from B2
-   - Processes with FLUX.1 Kontext Pro API using filter-specific prompts
+   - Processes with FLUX.2 Pro API using filter-specific prompts
    - Uploads processed image to B2
    - Deducts 1 credit and records transaction
    - Updates image record with processed URL
@@ -113,7 +113,7 @@ Required in `.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL` - Supabase project URL
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Supabase anon/public key
 - `SUPABASE_SERVICE_KEY` - Supabase service role key (server-side only)
-- `BFL_API_KEY` - Black Forest Labs FLUX.1 Kontext Pro API key (get from https://dashboard.bfl.ai)
+- `BFL_API_KEY` - Black Forest Labs FLUX.2 Pro API key (get from https://dashboard.bfl.ai)
 - `RESEND_API_KEY` - Resend API key for email verification (format: re_xxxxx)
 - `B2_APPLICATION_KEY_ID` - Backblaze B2 key ID
 - `B2_APPLICATION_KEY` - Backblaze B2 application key
@@ -138,7 +138,7 @@ Required in `.env.local`:
 API routes use `supabaseAdmin` client (service role) to bypass Row Level Security for credit deduction and image updates. Regular client uses anon key with RLS enforced.
 
 **Image Processing API (`/api/images/process/route.ts`):**
-- Uses FLUX.1 Kontext Pro via `bfl-api` package
+- Uses FLUX.2 Pro via native fetch (endpoint: `/v1/flux-2-pro`)
 - Filter prompts stored in database `scenes` table and fetched dynamically
 - Processing handled by `processImageWithFlux()` from `@/lib/flux`
 - Returns base64 image data from AI response
@@ -185,26 +185,53 @@ Freemium credit system:
 - Console logs extensively used in `/api/images/process` route
 - Run test script: `npx tsx scripts/test-flux.ts` (requires BFL_API_KEY in .env.local)
 
-## AI Service Migration (Gemini → FLUX.1 Kontext Pro)
+## AI Service Migration History
+
+### Migration: FLUX.1 Kontext Pro → FLUX.2 Pro
+
+**Migration Date:** November 2025
+
+Upgraded from FLUX.1 Kontext Pro to FLUX.2 Pro for improved quality and lower cost.
+
+**Key Changes:**
+- **Endpoint:** `/v1/flux-kontext-pro` → `/v1/flux-2-pro`
+- **Files Updated:**
+  - `src/lib/flux-native.ts` - Native FLUX.2 Pro integration
+  - `src/lib/flux.ts` - Wrapper module
+  - `scripts/test-flux.ts` - Test script
+
+**FLUX.2 Pro Benefits over FLUX.1 Kontext Pro:**
+- Better photorealism and image quality
+- Lower cost ($0.03 vs $0.04 per megapixel)
+- Support for up to 8 reference images (vs 3)
+- Resolution up to 4MP (2048x2048)
+- Improved typography and hex color support
+- Better prompt adherence
+
+**Rollback Plan:**
+If issues occur, revert to FLUX.1 Kontext Pro by changing endpoint in `flux-native.ts`:
+```typescript
+// Change this line:
+const submitResponse = await fetch(`${API_BASE_URL}/v1/flux-2-pro`, {
+// Back to:
+const submitResponse = await fetch(`${API_BASE_URL}/v1/flux-kontext-pro`, {
+```
+
+---
+
+### Migration: Gemini → FLUX.1 Kontext Pro
 
 **Migration Date:** January 2025
 
 The application was migrated from Google Gemini 2.5 Flash to Black Forest Labs FLUX.1 Kontext Pro for improved image quality and context-aware editing capabilities.
 
 **Key Changes:**
-- **AI Service Module:** `src/lib/flux.ts` - Core FLUX.1 integration
-- **Package:** Replaced `@google/generative-ai` with `bfl-api`
+- **AI Service Module:** `src/lib/flux.ts` - Core FLUX integration
+- **Package:** Replaced `@google/generative-ai` with native fetch
 - **API Routes Updated:**
   - `src/app/api/images/process/route.ts` - Main image processing
   - `src/app/api/admin/scenes/preview/route.ts` - Admin prompt testing
 - **Environment Variable:** `BFL_API_KEY` (replaces `GEMINI_API_KEY`)
-
-**FLUX.1 Kontext Pro Features:**
-- Context-aware image editing and remixing
-- Faster inference (8-10 seconds per image)
-- Better prompt understanding and image context preservation
-- Multi-reference image support (up to 3 reference images)
-- Safety tolerance controls (0-6 scale)
 
 **Testing Before Deployment:**
 1. Add `BFL_API_KEY` to `.env.local`
@@ -212,9 +239,3 @@ The application was migrated from Google Gemini 2.5 Flash to Black Forest Labs F
 3. Run: `npx tsx scripts/test-flux.ts`
 4. Review generated images in `scripts/` folder
 5. If quality is acceptable, deploy to Vercel with `BFL_API_KEY` environment variable
-
-**Rollback Plan:**
-If issues occur, revert to Gemini by:
-1. `npm install @google/generative-ai`
-2. Restore old code in process routes
-3. Switch back to `GEMINI_API_KEY` environment variable

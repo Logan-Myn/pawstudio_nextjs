@@ -1,7 +1,13 @@
 /**
- * FLUX.1 Kontext Pro AI Service - Native Implementation
+ * FLUX.2 Pro AI Service - Native Implementation
  * Direct API integration without external dependencies
  * Uses native fetch for better compatibility
+ *
+ * Upgraded from FLUX.1 Kontext Pro to FLUX.2 Pro for:
+ * - Better image quality and photorealism
+ * - Lower cost ($0.03 vs $0.04 per megapixel)
+ * - Support for up to 8 reference images
+ * - Resolution up to 4MP
  */
 
 const API_BASE_URL = 'https://api.bfl.ai'
@@ -30,7 +36,7 @@ interface FluxResult {
 }
 
 /**
- * Process image with FLUX.1 Kontext Pro using native fetch
+ * Process image with FLUX.2 Pro using native fetch
  */
 export async function processImageWithFluxNative(
   imageBuffer: Buffer,
@@ -44,11 +50,11 @@ export async function processImageWithFluxNative(
     const base64Image = imageBuffer.toString('base64')
     const dataUrl = `data:${mimeType};base64,${base64Image}`
 
-    console.log('[FLUX Native] Starting image processing')
-    console.log('[FLUX Native] Prompt:', prompt.substring(0, 100) + '...')
+    console.log('[FLUX.2 Pro] Starting image processing')
+    console.log('[FLUX.2 Pro] Prompt:', prompt.substring(0, 100) + '...')
 
-    // Submit generation request
-    const submitResponse = await fetch(`${API_BASE_URL}/v1/flux-kontext-pro`, {
+    // Submit generation request to FLUX.2 Pro
+    const submitResponse = await fetch(`${API_BASE_URL}/v1/flux-2-pro`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -57,7 +63,8 @@ export async function processImageWithFluxNative(
       body: JSON.stringify({
         prompt: prompt,
         input_image: dataUrl,
-        safety_tolerance: 2
+        safety_tolerance: 2,
+        output_format: 'jpeg'
       })
     })
 
@@ -67,8 +74,8 @@ export async function processImageWithFluxNative(
     }
 
     const task: FluxTask = await submitResponse.json()
-    console.log('[FLUX Native] Task submitted:', task.id)
-    console.log('[FLUX Native] Polling URL:', task.polling_url)
+    console.log('[FLUX.2 Pro] Task submitted:', task.id)
+    console.log('[FLUX.2 Pro] Polling URL:', task.polling_url)
 
     // Poll for results
     const maxAttempts = 30
@@ -88,10 +95,10 @@ export async function processImageWithFluxNative(
       }
 
       const result: FluxResult = await pollResponse.json()
-      console.log(`[FLUX Native] Attempt ${attempt}: ${result.status}`)
+      console.log(`[FLUX.2 Pro] Attempt ${attempt}: ${result.status}`)
 
       if (result.status === 'Ready' && result.result?.sample) {
-        console.log('[FLUX Native] Generation complete!')
+        console.log('[FLUX.2 Pro] Generation complete!')
 
         // Download the generated image
         const imageResponse = await fetch(result.result.sample)
@@ -117,7 +124,7 @@ export async function processImageWithFluxNative(
     throw new Error('Timeout: Generation did not complete in time')
 
   } catch (error) {
-    console.error('[FLUX Native] Error:', error)
+    console.error('[FLUX.2 Pro] Error:', error)
 
     if (error instanceof Error) {
       return {

@@ -1,7 +1,13 @@
 /**
- * FLUX.1 Kontext Pro API Test Script
+ * FLUX.2 Pro API Test Script
  *
- * This script tests the FLUX.1 Kontext Pro integration before deploying.
+ * This script tests the FLUX.2 Pro integration before deploying.
+ *
+ * FLUX.2 Pro features:
+ * - Better photorealism and image quality
+ * - Lower cost ($0.03 vs $0.04 per megapixel)
+ * - Support for up to 8 reference images
+ * - Resolution up to 4MP
  *
  * Usage:
  *   1. Ensure BFL_API_KEY is set in .env.local
@@ -18,7 +24,7 @@ import path from 'path'
 dotenv.config({ path: path.join(__dirname, '..', '.env.local') })
 
 async function main() {
-  console.log('🧪 FLUX.1 Kontext Pro API Test\n')
+  console.log('🧪 FLUX.2 Pro API Test\n')
   console.log('=' .repeat(60))
 
   // Check if API key is configured
