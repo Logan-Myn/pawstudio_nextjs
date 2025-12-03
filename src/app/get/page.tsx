@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Image from 'next/image'
 
-const APP_STORE_URL = 'https://apps.apple.com/app/pawstudio/id6746587498'
+const APP_STORE_URL = 'https://apps.apple.com/app/id6753995511'
 const PLAY_STORE_URL = 'https://play.google.com/store/apps/details?id=com.pawstudio.app'
 
 type Platform = 'ios' | 'android' | 'desktop' | 'unknown'
