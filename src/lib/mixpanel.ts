@@ -51,6 +51,12 @@ export function identifyUser(userId: string, properties?: {
       $created: properties.createdAt,
     });
     console.log("[Mixpanel] User properties set:", properties);
+
+    // Track a user identified event to ensure data flows
+    mixpanel.track("User Identified", {
+      user_id: userId,
+      email: properties.email,
+    });
   }
 }
 
