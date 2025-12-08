@@ -40,29 +40,33 @@ export function identifyUser(userId: string, properties?: {
   if (typeof window === "undefined") return;
 
   console.log("[Mixpanel] Identifying user:", userId);
+
+  // Identify must be called first
   mixpanel.identify(userId);
 
   if (properties) {
-    // Use set_once for initial properties and set for updates
-    mixpanel.people.set_once({
-      $email: properties.email,
-      $name: properties.name,
-      $created: properties.createdAt,
-    });
+    // Parse name into first and last
+    const nameParts = (properties.name || "").split(" ");
+    const firstName = nameParts[0] || "";
+    const lastName = nameParts.slice(1).join(" ") || "";
 
+    // Set user profile properties with Mixpanel special properties
     mixpanel.people.set({
-      email: properties.email,
-      name: properties.name,
-      credits: properties.credits,
-      role: properties.role,
-      last_seen: new Date().toISOString(),
+      "$email": properties.email,
+      "$first_name": firstName,
+      "$last_name": lastName,
+      "$name": properties.name,
+      "$created": properties.createdAt,
+      "credits": properties.credits,
+      "role": properties.role,
+      "last_login": new Date().toISOString(),
     });
-    console.log("[Mixpanel] User properties set:", properties);
 
-    // Track a user identified event to ensure data flows
-    mixpanel.track("User Identified", {
+    console.log("[Mixpanel] User profile set for:", userId);
+
+    // Track login event
+    mixpanel.track("Login", {
       user_id: userId,
-      email: properties.email,
     });
   }
 }
