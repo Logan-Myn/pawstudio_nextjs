@@ -11,6 +11,7 @@ import { CREDIT_PACKAGES, CreditPackage } from '@/types'
 import { CreditCard, Sparkles, History, Star, Check, Loader2, X } from 'lucide-react'
 import { StripePaymentForm } from '@/components/payment/StripePaymentForm'
 import { useToast } from '@/hooks/use-toast'
+import { trackPurchase } from '@/lib/mixpanel'
 
 interface Transaction {
   id: string
@@ -56,6 +57,18 @@ export default function CreditsPage() {
 
   const handlePaymentSuccess = async () => {
     setIsPaymentDialogOpen(false)
+
+    // Track purchase event in Mixpanel
+    if (user && selectedPackage) {
+      trackPurchase({
+        userId: user.id,
+        transactionId: `purchase_${Date.now()}`,
+        revenue: selectedPackage.price / 100,
+        currency: 'USD',
+        creditsPurchased: selectedPackage.credits,
+        packageName: selectedPackage.name,
+      })
+    }
 
     toast({
       title: 'Payment Successful!',

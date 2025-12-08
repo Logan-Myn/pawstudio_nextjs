@@ -13,6 +13,7 @@ import { ProcessingStatus } from '@/components/editor/processing-status'
 import { imageAPI } from '@/lib/api'
 import { Scene, ProcessedImage } from '@/types'
 import { Camera, Sparkles, AlertCircle, Upload, Palette, Wand2, Download, ImageIcon, Loader2 } from 'lucide-react'
+import { trackConversion, trackImageProcessed, trackError } from '@/lib/mixpanel'
 
 type EditorStep = 'upload' | 'filter' | 'processing' | 'result'
 
@@ -175,9 +176,34 @@ export default function EditorPage() {
       addProcessedImage(processedImage)
       setCurrentStep('result')
 
+      // Track conversion and image processed events in Mixpanel
+      trackConversion({
+        userId: user.id,
+        conversionType: 'image_processed',
+        sceneName: selectedScene.name,
+        sceneId: String(selectedScene.id),
+        creditCost: selectedScene.credit_cost,
+      })
+
+      trackImageProcessed({
+        userId: user.id,
+        imageId: processedImage.id,
+        sceneName: selectedScene.name,
+        sceneId: String(selectedScene.id),
+        creditCost: selectedScene.credit_cost,
+      })
+
     } catch (err: unknown) {
       console.error('Processing error:', err)
       const errorMessage = (err as {response?: {data?: {message?: string}}}).response?.data?.message;
+
+      // Track error in Mixpanel
+      trackError({
+        errorType: 'image_processing',
+        errorMessage: errorMessage || 'Failed to process image',
+        userId: user.id,
+      })
+
       setError(errorMessage || 'Failed to process image. Please try again.')
       setCurrentStep('filter')
     } finally {
