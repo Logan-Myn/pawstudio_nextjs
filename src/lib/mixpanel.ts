@@ -7,15 +7,27 @@ let initialized = false;
 export function initMixpanel() {
   if (initialized || typeof window === "undefined") return;
 
-  mixpanel.init(MIXPANEL_TOKEN, {
-    debug: process.env.NODE_ENV === "development",
-    track_pageview: true,
-    persistence: "localStorage",
-    autocapture: true,
-    record_sessions_percent: 100,
-  });
+  try {
+    mixpanel.init(MIXPANEL_TOKEN, {
+      debug: true,
+      track_pageview: "full-url",
+      persistence: "localStorage",
+      ignore_dnt: true,
+      autocapture: {
+        pageview: true,
+        click: true,
+        input: true,
+        scroll: true,
+        submit: true,
+      },
+      record_sessions_percent: 100,
+    });
 
-  initialized = true;
+    initialized = true;
+    console.log("[Mixpanel] Initialized successfully");
+  } catch (error) {
+    console.error("[Mixpanel] Initialization failed:", error);
+  }
 }
 
 export function identifyUser(userId: string, properties?: {
@@ -27,6 +39,7 @@ export function identifyUser(userId: string, properties?: {
 }) {
   if (typeof window === "undefined") return;
 
+  console.log("[Mixpanel] Identifying user:", userId);
   mixpanel.identify(userId);
 
   if (properties) {
@@ -37,11 +50,13 @@ export function identifyUser(userId: string, properties?: {
       role: properties.role,
       $created: properties.createdAt,
     });
+    console.log("[Mixpanel] User properties set:", properties);
   }
 }
 
 export function resetUser() {
   if (typeof window === "undefined") return;
+  console.log("[Mixpanel] Resetting user");
   mixpanel.reset();
 }
 
