@@ -43,12 +43,19 @@ export function identifyUser(userId: string, properties?: {
   mixpanel.identify(userId);
 
   if (properties) {
-    mixpanel.people.set({
+    // Use set_once for initial properties and set for updates
+    mixpanel.people.set_once({
       $email: properties.email,
       $name: properties.name,
+      $created: properties.createdAt,
+    });
+
+    mixpanel.people.set({
+      email: properties.email,
+      name: properties.name,
       credits: properties.credits,
       role: properties.role,
-      $created: properties.createdAt,
+      last_seen: new Date().toISOString(),
     });
     console.log("[Mixpanel] User properties set:", properties);
 
