@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Users, ImageIcon, CreditCard, TrendingUp, Activity, Clock } from 'lucide-react'
+import { Users, ImageIcon, CreditCard, Activity, Clock, UserPlus, Zap, ShoppingCart } from 'lucide-react'
+import Link from 'next/link'
 
 interface DashboardStats {
   totalUsers: number
@@ -13,31 +14,100 @@ interface DashboardStats {
   creditsSpentThisMonth: number
   totalScenes: number
   activeScenes: number
+  totalCreditsPurchased: number
+  creditsPurchasedThisMonth: number
+  totalPurchases: number
+  purchasesThisMonth: number
+}
+
+interface ActivityEvent {
+  id: string
+  type: 'user_registered' | 'image_processed' | 'credits_purchased' | 'credits_used' | 'scene_created' | 'scene_updated'
+  description: string
+  user_email: string | null
+  user_name: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
+const activityTypeConfig: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
+  user_registered: { icon: UserPlus, color: 'text-green-600', bgColor: 'bg-green-100' },
+  image_processed: { icon: ImageIcon, color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  credits_purchased: { icon: ShoppingCart, color: 'text-purple-600', bgColor: 'bg-purple-100' },
+  credits_used: { icon: Zap, color: 'text-orange-600', bgColor: 'bg-orange-100' },
+  scene_created: { icon: Activity, color: 'text-teal-600', bgColor: 'bg-teal-100' },
+  scene_updated: { icon: Activity, color: 'text-cyan-600', bgColor: 'bg-cyan-100' },
+}
+
+function formatTimeAgo(dateString: string): string {
+  const date = new Date(dateString)
+  const now = new Date()
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
+
+  if (diffInSeconds < 60) return 'Just now'
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min ago`
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`
+  if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`
+  return date.toLocaleDateString()
 }
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [activities, setActivities] = useState<ActivityEvent[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    // Set placeholder stats directly for now since dashboard API doesn't exist yet
-    setStats({
-      totalUsers: 5,
-      newUsersThisMonth: 2,
-      totalImages: 14,
-      imagesThisMonth: 8,
-      totalCreditsSpent: 23,
-      creditsSpentThisMonth: 12,
-      totalScenes: 4,
-      activeScenes: 4,
-    })
-    setLoading(false)
+    async function fetchData() {
+      try {
+        const [statsRes, activityRes] = await Promise.all([
+          fetch('/api/admin/stats'),
+          fetch('/api/admin/activity?limit=10')
+        ])
+
+        if (!statsRes.ok) {
+          throw new Error('Failed to fetch stats')
+        }
+        if (!activityRes.ok) {
+          throw new Error('Failed to fetch activity')
+        }
+
+        const statsData = await statsRes.json()
+        const activityData = await activityRes.json()
+
+        setStats(statsData.stats)
+        setActivities(activityData.activities || [])
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err)
+        setError(err instanceof Error ? err.message : 'Failed to load dashboard')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchData()
   }, [])
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-red-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600"></div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <p className="text-red-600 mb-2">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="text-sm text-orange-600 hover:underline"
+          >
+            Try again
+          </button>
+        </div>
       </div>
     )
   }
@@ -142,10 +212,10 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
-                <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                 <span className="text-sm">Storage</span>
               </div>
-              <span className="text-sm text-yellow-600">Monitoring</span>
+              <span className="text-sm text-green-600">Operational</span>
             </div>
           </CardContent>
         </Card>
@@ -157,8 +227,8 @@ export default function AdminDashboard() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 gap-2">
-              <a 
-                href="/admin/scenes" 
+              <Link
+                href="/admin/scenes"
                 className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-2">
@@ -166,9 +236,9 @@ export default function AdminDashboard() {
                   <span className="text-sm font-medium">Manage Scenes</span>
                 </div>
                 <span className="text-xs text-gray-500">→</span>
-              </a>
-              <a 
-                href="/admin/users" 
+              </Link>
+              <Link
+                href="/admin/users"
                 className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-2">
@@ -176,49 +246,63 @@ export default function AdminDashboard() {
                   <span className="text-sm font-medium">View Users</span>
                 </div>
                 <span className="text-xs text-gray-500">→</span>
-              </a>
-              <a 
-                href="/admin/settings" 
+              </Link>
+              <Link
+                href="/admin/activity"
                 className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
               >
                 <div className="flex items-center space-x-2">
-                  <TrendingUp className="h-4 w-4 text-gray-600" />
-                  <span className="text-sm font-medium">View Reports</span>
+                  <Clock className="h-4 w-4 text-gray-600" />
+                  <span className="text-sm font-medium">View All Activity</span>
                 </div>
                 <span className="text-xs text-gray-500">→</span>
-              </a>
+              </Link>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Recent Activity Log (Placeholder) */}
+      {/* Recent Activity Log */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center space-x-2">
             <Clock className="h-5 w-5" />
             <span>Recent Activity</span>
           </CardTitle>
+          <Link
+            href="/admin/activity"
+            className="text-sm text-orange-600 hover:text-orange-700 font-medium"
+          >
+            View all →
+          </Link>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3 text-sm text-gray-600">
-            <div className="flex justify-between items-center">
-              <span>New user registered: logan.moyon15@gmail.com</span>
-              <span className="text-xs">2 hours ago</span>
+          {activities.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-4">No recent activity</p>
+          ) : (
+            <div className="space-y-3">
+              {activities.slice(0, 5).map((activity) => {
+                const config = activityTypeConfig[activity.type] || activityTypeConfig.scene_updated
+                const Icon = config.icon
+                return (
+                  <div key={activity.id} className="flex items-start space-x-3">
+                    <div className={`p-1.5 rounded-full ${config.bgColor}`}>
+                      <Icon className={`h-3.5 w-3.5 ${config.color}`} />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-900 truncate">
+                        {activity.description}
+                        {activity.user_email && (
+                          <span className="text-gray-500"> - {activity.user_name || activity.user_email}</span>
+                        )}
+                      </p>
+                      <p className="text-xs text-gray-500">{formatTimeAgo(activity.created_at)}</p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-            <div className="flex justify-between items-center">
-              <span>Scene "Winter Wonderland" processed 3 images</span>
-              <span className="text-xs">4 hours ago</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>Credit purchase: 10 credits by user@example.com</span>
-              <span className="text-xs">1 day ago</span>
-            </div>
-            <div className="flex justify-between items-center">
-              <span>New scene "Pop Art Vibrant" created</span>
-              <span className="text-xs">2 days ago</span>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

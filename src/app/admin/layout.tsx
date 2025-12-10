@@ -4,12 +4,13 @@ import { AdminRoute } from '@/components/auth/admin-route'
 import { useAuthStore } from '@/lib/store/auth'
 import { signOut } from '@/lib/auth-client'
 import { Button } from '@/components/ui/button'
-import { LogOut, User, Settings, BarChart3, ImageIcon, ArrowLeft } from 'lucide-react'
+import { LogOut, User, Settings, BarChart3, ImageIcon, ArrowLeft, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const adminNavigation = [
   { name: 'Overview', href: '/admin', icon: BarChart3 },
+  { name: 'Activity', href: '/admin/activity', icon: Clock },
   { name: 'Scenes', href: '/admin/scenes', icon: ImageIcon },
   { name: 'Users', href: '/admin/users', icon: User },
   { name: 'Settings', href: '/admin/settings', icon: Settings },
